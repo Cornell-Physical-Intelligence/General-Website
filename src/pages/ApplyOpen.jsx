@@ -15,14 +15,14 @@ const INTEREST_API = import.meta.env.DEV
 
 const CONTACT_EMAIL = 'cuphysint@cornell.edu';
 const SUBTEAMS = ['Not sure yet', 'Mechanical', 'Electrical', 'Software', 'Business & Marketing'];
-const YEARS = ['Not provided', 'Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad'];
+const YEARS = ['Select your year', 'Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad'];
 const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf'];
 const MAX_FILE_BYTES = 2.5 * 1024 * 1024;
 
 // The site rule is no native pickers on styled surfaces, so the subteam
 // control is a listbox with roving focus: arrows move, Enter picks, Esc
 // returns to the button, and a click anywhere else closes it.
-function InterestSelect({ value, onChange, options, labelId }) {
+function InterestSelect({ value, onChange, options, labelId, required = false }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const buttonRef = useRef(null);
@@ -77,6 +77,7 @@ function InterestSelect({ value, onChange, options, labelId }) {
   return (
     <div className="ifz-dd" ref={rootRef}>
       <button
+        id={`${labelId}-control`}
         type="button"
         className="ifz-dd__button"
         ref={buttonRef}
@@ -98,7 +99,7 @@ function InterestSelect({ value, onChange, options, labelId }) {
         </svg>
       </button>
       {open && (
-        <ul id={`${labelId}-options`} className="ifz-dd__list" role="listbox" aria-labelledby={labelId} ref={listRef} onKeyDown={onListKeyDown}>
+        <ul id={`${labelId}-options`} className="ifz-dd__list" role="listbox" aria-labelledby={labelId} aria-required={required || undefined} ref={listRef} onKeyDown={onListKeyDown}>
           {options.map((option) => (
             <li
               key={option}
@@ -237,6 +238,11 @@ function InterestForm() {
       setError('That email does not look right.');
       return;
     }
+    if (!YEARS.slice(1).includes(year)) {
+      setError('Choose your year before joining the list.');
+      document.getElementById('interest-year-label-control')?.focus();
+      return;
+    }
     setError('');
     setStatus('sending');
     try {
@@ -244,7 +250,7 @@ function InterestForm() {
         name: cleanName,
         email: cleanEmail,
         subteam: subteam === SUBTEAMS[0] ? '' : subteam,
-        year: year === YEARS[0] ? null : year,
+        year,
         project: project.trim(),
         file: file ? { name: file.name, type: file.type, data: await readAsBase64(file) } : null,
         website: honeypotRef.current?.value || '',
@@ -320,9 +326,9 @@ function InterestForm() {
           </div>
           <div className="ifz-field">
             <span className="ifz-label" id="interest-year-label">
-              Year <span className="ifz-optional">(optional)</span>
+              Year <span className="ifz-field-note">(required)</span>
             </span>
-            <InterestSelect value={year} onChange={setYear} options={YEARS} labelId="interest-year-label" />
+            <InterestSelect value={year} onChange={setYear} options={YEARS} labelId="interest-year-label" required />
           </div>
           <div className="ifz-field">
             <span className="ifz-label" id="interest-subteam-label">
