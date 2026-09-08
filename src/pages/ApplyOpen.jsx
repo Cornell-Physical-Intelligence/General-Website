@@ -14,7 +14,7 @@ const INTEREST_API = import.meta.env.DEV
   : 'https://wiki.cornellphysicalintelligence.com';
 
 const CONTACT_EMAIL = 'cuphysint@cornell.edu';
-const SUBTEAMS = ['Not sure yet', 'Mechanical', 'Electrical', 'Software', 'Business & Marketing'];
+const SUBTEAMS = ['Not sure yet', 'Mechanical', 'Electrical', 'Software', 'Creative', 'Business & Marketing'];
 const YEARS = ['Select your year', 'Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad'];
 const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf'];
 const MAX_FILE_BYTES = 2.5 * 1024 * 1024;
