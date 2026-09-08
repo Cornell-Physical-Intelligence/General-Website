@@ -15,13 +15,14 @@ const INTEREST_API = import.meta.env.DEV
 
 const CONTACT_EMAIL = 'cuphysint@cornell.edu';
 const SUBTEAMS = ['Not sure yet', 'Mechanical', 'Electrical', 'Software', 'Business & Marketing'];
+const YEARS = ['Not provided', 'Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad'];
 const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf'];
 const MAX_FILE_BYTES = 2.5 * 1024 * 1024;
 
 // The site rule is no native pickers on styled surfaces, so the subteam
 // control is a listbox with roving focus: arrows move, Enter picks, Esc
 // returns to the button, and a click anywhere else closes it.
-function SubteamSelect({ value, onChange }) {
+function InterestSelect({ value, onChange, options, labelId }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const buttonRef = useRef(null);
@@ -81,6 +82,8 @@ function SubteamSelect({ value, onChange }) {
         ref={buttonRef}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-labelledby={`${labelId} ${labelId}-value`}
+        aria-controls={open ? `${labelId}-options` : undefined}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -89,14 +92,14 @@ function SubteamSelect({ value, onChange }) {
           }
         }}
       >
-        <span>{value}</span>
+        <span id={`${labelId}-value`}>{value}</span>
         <svg className="ifz-dd__chevron" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       {open && (
-        <ul className="ifz-dd__list" role="listbox" aria-label="Subteam of interest" ref={listRef} onKeyDown={onListKeyDown}>
-          {SUBTEAMS.map((option) => (
+        <ul id={`${labelId}-options`} className="ifz-dd__list" role="listbox" aria-labelledby={labelId} ref={listRef} onKeyDown={onListKeyDown}>
+          {options.map((option) => (
             <li
               key={option}
               role="option"
@@ -213,6 +216,7 @@ function InterestForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subteam, setSubteam] = useState(SUBTEAMS[0]);
+  const [year, setYear] = useState(YEARS[0]);
   const [project, setProject] = useState('');
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState('idle');
@@ -240,6 +244,7 @@ function InterestForm() {
         name: cleanName,
         email: cleanEmail,
         subteam: subteam === SUBTEAMS[0] ? '' : subteam,
+        year: year === YEARS[0] ? null : year,
         project: project.trim(),
         file: file ? { name: file.name, type: file.type, data: await readAsBase64(file) } : null,
         website: honeypotRef.current?.value || '',
@@ -314,10 +319,16 @@ function InterestForm() {
             />
           </div>
           <div className="ifz-field">
+            <span className="ifz-label" id="interest-year-label">
+              Year <span className="ifz-optional">(optional)</span>
+            </span>
+            <InterestSelect value={year} onChange={setYear} options={YEARS} labelId="interest-year-label" />
+          </div>
+          <div className="ifz-field">
             <span className="ifz-label" id="interest-subteam-label">
               Subteam of interest
             </span>
-            <SubteamSelect value={subteam} onChange={setSubteam} />
+            <InterestSelect value={subteam} onChange={setSubteam} options={SUBTEAMS} labelId="interest-subteam-label" />
           </div>
           <div className="ifz-field">
             <label className="ifz-label" htmlFor="interest-project">
