@@ -17,6 +17,9 @@
 html,
 body {
   margin: 0;
+  /* Full-bleed content cannot create a horizontal scrolling surface. */
+  overflow-x: clip;
+  overscroll-behavior-x: none;
   /* Light by default (inverted theme); App flips this via data-theme on <body>. */
   background: #ffffff;
 }
@@ -27,13 +30,18 @@ body[data-theme='dark'] {
 
 body {
   min-height: 100vh;
-  /* The gallery tapestry and the team rule are full-bleed via 100vw, which overshoots
-     the content box by the scrollbar width. Clip that rather than let the page pan. */
-  overflow-x: hidden;
   /* Crisper text rendering on macOS. */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+  html,
+  body {
+    overscroll-behavior: none;
+    touch-action: pan-y pinch-zoom;
+  }
 }
 
 #root {

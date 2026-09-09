@@ -3,7 +3,6 @@
 // it is finished and reviewed. The live variant is chosen by APPLY_ACTIVE in
 // Apply.jsx (see README, "Apply page: open vs closed").
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import SiteFooter from '../components/SiteFooter';
 import './Apply.css';
 
@@ -32,7 +31,7 @@ function InterestSelect({ value, onChange, options, labelId, required = false })
   useEffect(() => {
     if (!open) return undefined;
     const onDocDown = (event) => {
-      if (!rootRef.current?.contains(event.target) && !listRef.current?.contains(event.target)) setOpen(false);
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
     };
     document.addEventListener('pointerdown', onDocDown);
     return () => document.removeEventListener('pointerdown', onDocDown);
@@ -43,47 +42,35 @@ function InterestSelect({ value, onChange, options, labelId, required = false })
     const list = listRef.current;
     const button = buttonRef.current;
     const viewport = window.visualViewport;
-    const position = () => {
+    let opensAbove;
+    const fitHeight = () => {
       const rect = button.getBoundingClientRect();
       const topEdge = Math.max((viewport?.offsetTop || 0) + 8, (document.querySelector('.menu-bar')?.getBoundingClientRect().bottom || 0) + 8);
       const bottomEdge = (viewport?.offsetTop || 0) + (viewport?.height || window.innerHeight) - 8;
-      const leftEdge = (viewport?.offsetLeft || 0) + 8;
-      const width = Math.min(rect.width, (viewport?.width || window.innerWidth) - 16);
       const above = Math.max(0, rect.top - 6 - topEdge);
       const below = Math.max(0, bottomEdge - rect.bottom - 6);
       const desired = Math.min(280, list.scrollHeight + 2);
-      const opensAbove = below < desired && above > below;
-      const height = Math.min(desired, opensAbove ? above : below);
-      Object.assign(list.style, {
-        width: `${width}px`,
-        left: `${Math.max(leftEdge, Math.min(rect.left, leftEdge + (viewport?.width || window.innerWidth) - 16 - width))}px`,
-        top: `${opensAbove ? rect.top - 6 - height : rect.bottom + 6}px`,
-        maxHeight: `${height}px`,
-      });
+      // Choose a side once. Scrolling must never move or flip the menu
+      // relative to its field; CSS keeps both in the same scrolling layer.
+      opensAbove ??= below < desired && above > below;
+      list.dataset.placement = opensAbove ? 'above' : 'below';
+      list.style.maxHeight = `${Math.min(desired, opensAbove ? above : below)}px`;
     };
-    // The portal escapes the success-animation rail's overflow clipping.
-    // Size against the visual viewport, including an open phone keyboard.
-    position();
+    // Only screen/keyboard size changes need a new height, not scroll events.
+    fitHeight();
     const selected = list.querySelector('[aria-selected="true"]');
     selected?.focus({ preventScroll: true });
     if (selected) list.scrollTop = Math.max(0, selected.offsetTop - (list.clientHeight - selected.offsetHeight) / 2);
-    const onScroll = (event) => {
-      if (!list.contains(event.target)) position();
-    };
     const onFocus = (event) => {
-      if (!rootRef.current?.contains(event.target) && !list.contains(event.target)) setOpen(false);
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
     };
-    window.addEventListener('resize', position);
-    document.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', fitHeight);
     document.addEventListener('focusin', onFocus);
-    viewport?.addEventListener('resize', position);
-    viewport?.addEventListener('scroll', position);
+    viewport?.addEventListener('resize', fitHeight);
     return () => {
-      window.removeEventListener('resize', position);
-      document.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', fitHeight);
       document.removeEventListener('focusin', onFocus);
-      viewport?.removeEventListener('resize', position);
-      viewport?.removeEventListener('scroll', position);
+      viewport?.removeEventListener('resize', fitHeight);
     };
   }, [open]);
 
@@ -124,8 +111,7 @@ function InterestSelect({ value, onChange, options, labelId, required = false })
       setOpen(false);
       buttonRef.current?.focus({ preventScroll: true });
     } else if (event.key === 'Tab') {
-      // Return to the trigger before the browser advances through the form;
-      // portal options otherwise sit after the footer in DOM tab order.
+      // Advance from the field's trigger, not a soon-to-be-removed option.
       buttonRef.current?.focus({ preventScroll: true });
       setOpen(false);
     }
@@ -155,7 +141,7 @@ function InterestSelect({ value, onChange, options, labelId, required = false })
           <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && createPortal(
+      {open && (
         <ul id={`${labelId}-options`} className="ifz-dd__list" role="listbox" aria-labelledby={labelId} aria-required={required || undefined} ref={listRef} onKeyDown={onListKeyDown}>
           {options.map((option) => (
             <li
@@ -169,8 +155,7 @@ function InterestSelect({ value, onChange, options, labelId, required = false })
               {option}
             </li>
           ))}
-        </ul>,
-        document.querySelector('.app'),
+        </ul>
       )}
     </div>
   );
