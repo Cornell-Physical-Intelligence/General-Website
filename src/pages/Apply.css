@@ -89,11 +89,6 @@
   color: rgba(var(--fg-rgb), 0.72);
 }
 
-.ifz-field-note {
-  font-weight: 400;
-  color: rgba(var(--fg-rgb), 0.55);
-}
-
 .ifz-input {
   width: 100%;
   font: inherit;

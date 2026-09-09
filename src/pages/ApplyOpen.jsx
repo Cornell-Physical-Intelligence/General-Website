@@ -371,7 +371,7 @@ function InterestForm() {
           </div>
           <div className="ifz-field">
             <span className="ifz-label" id="interest-year-label">
-              Year <span className="ifz-field-note">(required)</span>
+              Year
             </span>
             <InterestSelect value={year} onChange={setYear} options={YEARS} labelId="interest-year-label" required />
           </div>
