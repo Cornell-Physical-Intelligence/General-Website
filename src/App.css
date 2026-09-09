@@ -96,6 +96,7 @@
   font-family: Arial, sans-serif;
   padding: 0;
   min-width: 60px;
+  min-height: 40px;
   z-index: 1;
   text-shadow: var(--menu-shadow);
 }
@@ -108,7 +109,7 @@
   opacity: 1;
 }
 
-@media (max-width: 420px) {
+@media (max-width: 520px) {
   .menu-bar {
     top: 16px;
   }

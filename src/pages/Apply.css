@@ -219,11 +219,13 @@
 }
 
 .ifz-dd__list {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
+  position: fixed;
+  z-index: 1100;
+  max-height: min(280px, calc(100dvh - 16px));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y pinch-zoom;
   margin: 0;
   padding: 5px;
   list-style: none;
@@ -234,12 +236,15 @@
 }
 
 .ifz-dd__list [role='option'] {
-  min-height: 40px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   padding: 9px 11px;
   border-radius: 6px;
   font-size: 0.92rem;
   color: var(--fg);
   cursor: pointer;
+  user-select: none;
 }
 
 .ifz-dd__list [role='option']:hover,
@@ -328,6 +333,7 @@
 
 .ifz-dupe__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
 }
@@ -485,5 +491,34 @@
   .ifz-done-note {
     animation-duration: 0.01s;
     animation-delay: 0s;
+  }
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+  .ifz-input,
+  .ifz-projectbox__text,
+  .ifz-dd__button {
+    font-size: 16px;
+  }
+
+  .ifz-input,
+  .ifz-dd__button,
+  .ifz-submit,
+  .ifz-attach,
+  .ifz-file__remove,
+  .ifz-dupe__cancel,
+  .ifz-dupe__ok {
+    min-height: 44px;
+  }
+
+  .ifz-attach,
+  .ifz-file__remove {
+    min-width: 44px;
+  }
+
+  .ifz-input,
+  .ifz-projectbox__text,
+  .ifz-dd__button {
+    scroll-margin-top: 80px;
   }
 }

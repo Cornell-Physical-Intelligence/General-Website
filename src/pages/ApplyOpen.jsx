@@ -2,7 +2,8 @@
 // only on the off-season page (ApplyClosed). Do not rewrite or restyle this —
 // it is finished and reviewed. The live variant is chosen by APPLY_ACTIVE in
 // Apply.jsx (see README, "Apply page: open vs closed").
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import SiteFooter from '../components/SiteFooter';
 import './Apply.css';
 
@@ -31,45 +32,101 @@ function InterestSelect({ value, onChange, options, labelId, required = false })
   useEffect(() => {
     if (!open) return undefined;
     const onDocDown = (event) => {
-      if (!rootRef.current?.contains(event.target)) setOpen(false);
+      if (!rootRef.current?.contains(event.target) && !listRef.current?.contains(event.target)) setOpen(false);
     };
     document.addEventListener('pointerdown', onDocDown);
     return () => document.removeEventListener('pointerdown', onDocDown);
   }, [open]);
 
-  useEffect(() => {
-    if (open) listRef.current?.querySelector('[aria-selected="true"]')?.focus();
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    const list = listRef.current;
+    const button = buttonRef.current;
+    const viewport = window.visualViewport;
+    const position = () => {
+      const rect = button.getBoundingClientRect();
+      const topEdge = Math.max((viewport?.offsetTop || 0) + 8, (document.querySelector('.menu-bar')?.getBoundingClientRect().bottom || 0) + 8);
+      const bottomEdge = (viewport?.offsetTop || 0) + (viewport?.height || window.innerHeight) - 8;
+      const leftEdge = (viewport?.offsetLeft || 0) + 8;
+      const width = Math.min(rect.width, (viewport?.width || window.innerWidth) - 16);
+      const above = Math.max(0, rect.top - 6 - topEdge);
+      const below = Math.max(0, bottomEdge - rect.bottom - 6);
+      const desired = Math.min(280, list.scrollHeight + 2);
+      const opensAbove = below < desired && above > below;
+      const height = Math.min(desired, opensAbove ? above : below);
+      Object.assign(list.style, {
+        width: `${width}px`,
+        left: `${Math.max(leftEdge, Math.min(rect.left, leftEdge + (viewport?.width || window.innerWidth) - 16 - width))}px`,
+        top: `${opensAbove ? rect.top - 6 - height : rect.bottom + 6}px`,
+        maxHeight: `${height}px`,
+      });
+    };
+    // The portal escapes the success-animation rail's overflow clipping.
+    // Size against the visual viewport, including an open phone keyboard.
+    position();
+    const selected = list.querySelector('[aria-selected="true"]');
+    selected?.focus({ preventScroll: true });
+    if (selected) list.scrollTop = Math.max(0, selected.offsetTop - (list.clientHeight - selected.offsetHeight) / 2);
+    const onScroll = (event) => {
+      if (!list.contains(event.target)) position();
+    };
+    const onFocus = (event) => {
+      if (!rootRef.current?.contains(event.target) && !list.contains(event.target)) setOpen(false);
+    };
+    window.addEventListener('resize', position);
+    document.addEventListener('scroll', onScroll, true);
+    document.addEventListener('focusin', onFocus);
+    viewport?.addEventListener('resize', position);
+    viewport?.addEventListener('scroll', position);
+    return () => {
+      window.removeEventListener('resize', position);
+      document.removeEventListener('scroll', onScroll, true);
+      document.removeEventListener('focusin', onFocus);
+      viewport?.removeEventListener('resize', position);
+      viewport?.removeEventListener('scroll', position);
+    };
   }, [open]);
 
   const pick = (option) => {
     onChange(option);
     setOpen(false);
-    buttonRef.current?.focus();
+    buttonRef.current?.focus({ preventScroll: true });
   };
 
   const onListKeyDown = (event) => {
     const items = [...(listRef.current?.querySelectorAll('[role="option"]') ?? [])];
     const at = items.indexOf(document.activeElement);
+    const focusOption = (option) => {
+      if (!option) return;
+      option.focus({ preventScroll: true });
+      const list = listRef.current;
+      const top = option.offsetTop, bottom = top + option.offsetHeight;
+      if (top < list.scrollTop) list.scrollTop = top;
+      else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+    };
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      items[Math.min(at + 1, items.length - 1)]?.focus();
+      focusOption(items[Math.min(at + 1, items.length - 1)]);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      items[Math.max(at - 1, 0)]?.focus();
+      focusOption(items[Math.max(at - 1, 0)]);
     } else if (event.key === 'Home') {
       event.preventDefault();
-      items[0]?.focus();
+      focusOption(items[0]);
     } else if (event.key === 'End') {
       event.preventDefault();
-      items[items.length - 1]?.focus();
+      focusOption(items[items.length - 1]);
     } else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       pick(document.activeElement?.dataset.value ?? value);
     } else if (event.key === 'Escape') {
       event.preventDefault();
       setOpen(false);
-      buttonRef.current?.focus();
+      buttonRef.current?.focus({ preventScroll: true });
     } else if (event.key === 'Tab') {
+      // Return to the trigger before the browser advances through the form;
+      // portal options otherwise sit after the footer in DOM tab order.
+      buttonRef.current?.focus({ preventScroll: true });
       setOpen(false);
     }
   };
@@ -98,7 +155,7 @@ function InterestSelect({ value, onChange, options, labelId, required = false })
           <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && (
+      {open && createPortal(
         <ul id={`${labelId}-options`} className="ifz-dd__list" role="listbox" aria-labelledby={labelId} aria-required={required || undefined} ref={listRef} onKeyDown={onListKeyDown}>
           {options.map((option) => (
             <li
@@ -112,7 +169,8 @@ function InterestSelect({ value, onChange, options, labelId, required = false })
               {option}
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.querySelector('.app'),
       )}
     </div>
   );
@@ -232,10 +290,12 @@ function InterestForm() {
     const cleanEmail = email.trim();
     if (!cleanName) {
       setError('Tell us your name.');
+      document.getElementById('interest-name')?.focus();
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
       setError('That email does not look right.');
+      document.getElementById('interest-email')?.focus();
       return;
     }
     if (!YEARS.slice(1).includes(year)) {
