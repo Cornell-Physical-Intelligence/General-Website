@@ -19,5 +19,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Verify application draft recovery and success confirmation
+        run: node scripts/test-interest-draft.mjs
       - name: Verify the committed Pages build is current
         run: git diff --exit-code -- docs
