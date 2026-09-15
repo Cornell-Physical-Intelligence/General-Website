@@ -4,6 +4,7 @@
 // Apply.jsx (see README, "Apply page: open vs closed").
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import SiteFooter from '../components/SiteFooter';
+import { loadInterestDraft, saveInterestDraft, clearInterestDraft } from '../interestDraft';
 import './Apply.css';
 
 // Submissions go to the wiki's backend: same Postgres and email the team
@@ -257,18 +258,30 @@ const readAsBase64 = (file) =>
   });
 
 function InterestForm() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [subteam, setSubteam] = useState(SUBTEAMS[0]);
-  const [year, setYear] = useState(YEARS[0]);
-  const [project, setProject] = useState('');
+  const [restoredDraft] = useState(() => loadInterestDraft());
+  const [name, setName] = useState(restoredDraft?.name || '');
+  const [email, setEmail] = useState(restoredDraft?.email || '');
+  const [subteam, setSubteam] = useState(SUBTEAMS.includes(restoredDraft?.subteam) ? restoredDraft.subteam : SUBTEAMS[0]);
+  const [year, setYear] = useState(YEARS.includes(restoredDraft?.year) ? restoredDraft.year : YEARS[0]);
+  const [project, setProject] = useState(restoredDraft?.project || '');
   const [file, setFile] = useState(null);
+  const [missingAttachment, setMissingAttachment] = useState(restoredDraft?.fileName || '');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   // Set when the server says this address already joined: holds the earlier
   // date so the visitor can decide whether to replace it.
   const [duplicate, setDuplicate] = useState(null);
   const honeypotRef = useRef(null);
+
+  useEffect(() => {
+    if (status === 'done') return;
+    saveInterestDraft({
+      name, email, project,
+      subteam: subteam === SUBTEAMS[0] ? '' : subteam,
+      year: year === YEARS[0] ? '' : year,
+      fileName: file?.name || missingAttachment,
+    });
+  }, [name, email, subteam, year, project, file, missingAttachment, status]);
 
   const send = async (confirmUpdate) => {
     const cleanName = name.trim();
@@ -290,6 +303,8 @@ function InterestForm() {
     }
     setError('');
     setStatus('sending');
+    const draft = { name, email, subteam: subteam === SUBTEAMS[0] ? '' : subteam, year, project, fileName: file?.name || missingAttachment };
+    saveInterestDraft(draft);
     try {
       const payload = {
         name: cleanName,
@@ -314,6 +329,8 @@ function InterestForm() {
         return;
       }
       if (!res.ok) throw new Error(out.error || 'Something went wrong.');
+      if (out.ok !== true) throw new Error('We could not confirm your submission. Please try again.');
+      clearInterestDraft(draft);
       setDuplicate(null);
       setStatus('done');
     } catch (problem) {
@@ -329,6 +346,7 @@ function InterestForm() {
   };
 
   const done = status === 'done';
+  const attachmentReminder = missingAttachment && !file ? `Your answers were restored. Attach ${missingAttachment} again if you want to include it.` : '';
 
   // Success never swaps the layout out from under the visitor: the submit
   // button itself becomes the confirmation, holds a beat, and everything
@@ -385,7 +403,7 @@ function InterestForm() {
             <label className="ifz-label" htmlFor="interest-project">
               What&apos;s the coolest project you&apos;ve done?
             </label>
-            <ProjectBox project={project} onProject={setProject} file={file} onFile={setFile} onProblem={setError} />
+            <ProjectBox project={project} onProject={setProject} file={file} onFile={(next) => { setFile(next); setMissingAttachment(''); }} onProblem={setError} />
           </div>
           {/* Honeypot: humans never see it, autofill and bots do. */}
           <input
@@ -397,8 +415,8 @@ function InterestForm() {
             autoComplete="off"
             aria-hidden="true"
           />
-          <p className={`ifz-error ${error ? 'is-visible' : ''}`} role="alert" aria-live="polite">
-            {error}
+          <p className={`ifz-error ${error || attachmentReminder ? 'is-visible' : ''}`} role="alert" aria-live="polite">
+            {[error, attachmentReminder].filter(Boolean).join(' ')}
           </p>
         </div>
       </div>
