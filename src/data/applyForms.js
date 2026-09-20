@@ -28,3 +28,14 @@ export const FALLBACK_SITE = {
     },
   ],
 };
+
+// A form the wiki added later has no page of its own in the build, so its
+// address, /apply/<key>/, lands on /apply/?form=<key>: the same bare page.
+export const formKeyFromSearch = (search) => {
+  try {
+    const key = new URLSearchParams(search || '').get('form') || '';
+    return /^[a-z][a-z0-9_-]{0,39}$/.test(key) ? key : '';
+  } catch {
+    return '';
+  }
+};

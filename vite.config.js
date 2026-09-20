@@ -469,7 +469,8 @@ const notFoundDocument = () => `<!doctype html>
       p { margin: 0; line-height: 1.6; }
       a { color: inherit; text-underline-offset: 0.2em; }
     </style>
-  </head>
+      <script>(function () { var m = /^\\/apply\\/([a-z][a-z0-9_-]{0,39})\\/?$/.exec(location.pathname); if (m && ['interest', 'coffee', 'application'].indexOf(m[1]) < 0) location.replace('/apply/?form=' + m[1]); })();</script>
+</head>
   <body>
     <main>
       <h1>${escapeHtml(getPageSeo('notFound').heading)}</h1>

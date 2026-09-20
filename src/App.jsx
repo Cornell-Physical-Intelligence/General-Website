@@ -198,8 +198,9 @@ export default function App({ initialPage, InitialPage }) {
   };
 
   const onHome = currentPage === 'home';
-  // A bare page (one form at its own address) is the form and nothing else.
-  const bare = Boolean(getPageSeo(currentPage).bare);
+  // A bare page (one form at its own address, or /apply/?form=<key> for a
+  // form added after this build) is the form and nothing else.
+  const bare = Boolean(getPageSeo(currentPage).bare) || (currentPage === 'apply' && /[?&]form=[a-z]/.test(window.location.search));
   return (
     <div className={`app ${inverted ? 'app--light' : 'app--dark'}`}>
       {!bare && <nav className="menu-bar">

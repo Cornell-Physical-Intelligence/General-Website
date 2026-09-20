@@ -48,7 +48,9 @@ the wiki, else the first open one. When no form is open, the page renders
 on it, no menu and no footer: `/apply/interest/`, `/apply/coffee/`, and
 `/apply/application/` (the `applyInterest`, `applyCoffee`, and
 `applyApplication` entries in `src/seo.js`, marked `bare`, rendered from the
-apply chunk). A closed form's page says so and links to `/apply/`.
+apply chunk). A form the wiki adds later has no static document, so its
+address `/apply/<key>/` is sent by `404.html` to `/apply/?form=<key>`, which
+draws the same bare page. A closed form's page says so and links to `/apply/`.
 
 - Submissions post to `POST /api/recruit/site/<form>` as
   `{ answers, files, website, confirmUpdate }`. Before the wiki has a cycle

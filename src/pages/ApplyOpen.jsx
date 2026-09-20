@@ -10,7 +10,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import SiteFooter from '../components/SiteFooter';
 import ApplyClosed from './ApplyClosed';
 import { loadDraft, saveDraft, clearDraft, loadLegacyInterestDraft } from '../interestDraft';
-import { FALLBACK_SITE, FILE_TYPES, MAX_FILE_BYTES } from '../data/applyForms';
+import { FALLBACK_SITE, FILE_TYPES, MAX_FILE_BYTES, formKeyFromSearch } from '../data/applyForms';
 import './Apply.css';
 
 // Submissions go to the wiki's backend: same Postgres and email the team
@@ -659,10 +659,18 @@ export function ApplyInterest() { return <FormPage formKey="interest" />; }
 export function ApplyCoffee() { return <FormPage formKey="coffee" />; }
 export function ApplyApplication() { return <FormPage formKey="application" />; }
 
+
+
 // /apply is where the QR code and the menu land: one form, the one the wiki
 // marks for it, else the first open one. The other open forms live at their
 // own addresses (/apply/coffee/ and so on).
 export default function ApplyOpen() {
+  const asked = typeof window === 'undefined' ? '' : formKeyFromSearch(window.location.search);
+  if (asked) return <FormPage formKey={asked} />;
+  return <ApplyLanding />;
+}
+
+function ApplyLanding() {
   const site = useSite();
   const open = (site?.sections || []).filter(isOpen);
   const active = open.find((s) => s.key === site?.landing) || open[0];

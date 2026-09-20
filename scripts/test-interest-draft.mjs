@@ -99,7 +99,9 @@ try {
 
   // The page itself: it asks the wiki once, shows the interest form the wiki
   // publishes, and shows the closed page when nothing is open.
-  const pageWith = async (site, draw = Apply) => {
+  // The page's root components hand off to others; run them the way React would, hooks and all.
+  const unwrap = (el) => (el && typeof el.type === 'function' ? unwrap(el.type(el.props)) : el);
+  const pageWith = async (site, draw = () => unwrap(Apply())) => {
     globalThis.fetch = async () => (site instanceof Error ? Promise.reject(site) : { ok: true, json: async () => site });
     resetMount();
     cursor = 0; effects = [];
@@ -120,14 +122,21 @@ try {
   assert.equal(walk(twoOpen, (node) => node.type?.name === 'SectionForm').props.cycle.id, 'cy-1');
   assert.equal(walk(await pageWith(open(['interest', 'coffee'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'coffee', '/apply shows the form the wiki marks for it');
   assert.equal(walk(await pageWith(open(['interest'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', 'a closed choice falls back to the first open form');
-  assert.equal((await pageWith(open([]))).type?.name, 'ApplyClosed', 'nothing open shows the closed page');
+  assert.equal((await pageWith(open([]))).type, 'closed', 'nothing open shows the closed page');
   // A form at its own address: the form alone, or a closed note.
   const mod = await import(pathToFileURL(join(dir, 'src/pages/ApplyOpen.js')));
-  const drawCoffee = () => { const el = mod.ApplyCoffee(); return el.type(el.props); };
+  const drawCoffee = () => unwrap(mod.ApplyCoffee());
   const bareOpen = await pageWith(open(['coffee']), drawCoffee);
   assert.equal(walk(bareOpen, (n) => n.type?.name === 'SectionForm').props.section.key, 'coffee', 'the coffee page draws the coffee form');
   assert.ok(walk(bareOpen, (n) => n.props?.className === 'apply-page__title'), 'the bare page carries the form title');
   assert.ok(!walk(bareOpen, (n) => n.type?.name === 'SiteFooter'), 'a bare page has no footer');
+  const later = { ...open(['coffee']), sections: open(['coffee']).sections.concat({ key: 'coffee-2', title: 'Coffee chats, round 2', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }) };
+  globalThis.window.location.search = '?form=coffee-2';
+  const byQuery = await pageWith(later);
+  assert.equal(walk(byQuery, (n) => n.type?.name === 'SectionForm')?.props.section.key, 'coffee-2', '/apply/?form=<key> draws a form added after the build, alone');
+  assert.ok(!walk(byQuery, (n) => n.type?.name === 'SiteFooter'), 'as a bare page');
+  globalThis.window.location.search = '';
+  assert.equal((await import(pathToFileURL(join(dir, 'src/data/applyForms.js')))).formKeyFromSearch('?form=Bad Key'), '', 'only a plain key is honoured');
   const bareClosed = await pageWith(open(['interest']), drawCoffee);
   assert.ok(!walk(bareClosed, (n) => n.type?.name === 'SectionForm'), 'a closed form draws no fields');
   assert.ok(walk(bareClosed, (n) => Array.isArray(n.props?.children) && n.props.children.some((c) => typeof c === 'string' && c.includes('This form is closed'))), 'a closed form says so');
