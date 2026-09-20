@@ -442,9 +442,11 @@ function SectionForm({ section, cycle }) {
         body: JSON.stringify(legacy ? { ...answers, file: attached.file || null, website, ...extra } : { answers, files: attached, website, ...extra }),
       });
       const out = await res.json().catch(() => ({}));
-      // Already sent: ask before overwriting what they sent before.
+      // Already sent: ask before overwriting what they sent before, unless
+      // the wiki says this form never replaces an earlier submission.
       if (res.status === 409 && out.exists) {
         setStatus('idle');
+        if (out.replaceable === false) { setError(out.error || 'You already sent this form with this email.'); return; }
         setDuplicate({ submitted: out.submitted });
         return;
       }

@@ -184,6 +184,10 @@ try {
   tree = await submit({ status: 409, ok: false, json: async () => ({ exists: true, submitted: 1 }) });
   assert.ok(walk(tree, (node) => node.props?.role === 'alertdialog'), 'duplicates still ask before replacing');
   assert.ok(loadDraft('interest', storage), 'duplicate responses retain answers');
+  resetMount();
+  tree = await submit({ status: 409, ok: false, json: async () => ({ exists: true, replaceable: false, error: 'You already sent this form with this email.' }) });
+  assert.ok(!walk(tree, (node) => node.props?.role === 'alertdialog'), 'a form that never replaces does not offer to');
+  assert.ok(text(tree, 'You already sent this form with this email.'), 'it says so instead');
 
   for (const status of [200, 202]) {
     saveDraft('interest', draft, storage);
