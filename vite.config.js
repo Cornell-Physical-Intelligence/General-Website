@@ -533,7 +533,9 @@ const emitRoutePages = () => {
       // chunk injects its own <link> when it runs and two live stylesheets for one file is
       // a needless thing to reason about later.
       const hints = (route) => {
-        const entry = chunks[route.toLowerCase()]
+        // A route that renders from another route's chunk (the standalone
+        // form pages live in the apply chunk) preloads that chunk.
+        const entry = chunks[(getPageSeo(route).chunk || route).toLowerCase()]
         const lines = []
         if (route === 'home' && heroWorker) {
           lines.push(

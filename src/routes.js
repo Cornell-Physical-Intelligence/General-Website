@@ -47,6 +47,11 @@ export const PAGE_LOADERS = {
   members: () => import('./pages/Members'),
   sponsors: () => import('./pages/Sponsors'),
   apply: () => import('./pages/Apply'),
+  // The standalone form pages live in the apply chunk, so a deep link to one
+  // costs the same single fetch as /apply/ itself.
+  applyInterest: () => import('./pages/Apply').then((m) => ({ default: m.ApplyInterest })),
+  applyCoffee: () => import('./pages/Apply').then((m) => ({ default: m.ApplyCoffee })),
+  applyApplication: () => import('./pages/Apply').then((m) => ({ default: m.ApplyApplication })),
   aboutCupi: () => import('./pages/AboutCupi'),
   faq: () => import('./pages/Faq'),
   vq1Report: () => import('./pages/Vq1Report'),

@@ -99,15 +99,15 @@ try {
 
   // The page itself: it asks the wiki once, shows the interest form the wiki
   // publishes, and shows the closed page when nothing is open.
-  const pageWith = async (site) => {
+  const pageWith = async (site, draw = Apply) => {
     globalThis.fetch = async () => (site instanceof Error ? Promise.reject(site) : { ok: true, json: async () => site });
     resetMount();
     cursor = 0; effects = [];
-    Apply();
+    draw();
     effects.forEach((effect) => effect());
     await new Promise((resolve) => setImmediate(resolve));
     cursor = 0; effects = [];
-    return Apply();
+    return draw();
   };
   const legacyPage = await pageWith(new Error('wiki unreachable'));
   const formNode = walk(legacyPage, (node) => node.type?.name === 'SectionForm');
@@ -118,6 +118,16 @@ try {
   assert.equal(walk(twoOpen, (node) => node.props?.className === 'ifz-tabs').props.children.length, 2, 'two open forms show two names');
   assert.equal(walk(twoOpen, (node) => node.type?.name === 'SectionForm').props.cycle.id, 'cy-1');
   assert.equal((await pageWith(open([]))).type?.name, 'ApplyClosed', 'nothing open shows the closed page');
+  // A form at its own address: the form alone, or a closed note.
+  const mod = await import(pathToFileURL(join(dir, 'src/pages/ApplyOpen.js')));
+  const drawCoffee = () => { const el = mod.ApplyCoffee(); return el.type(el.props); };
+  const bareOpen = await pageWith(open(['coffee']), drawCoffee);
+  assert.equal(walk(bareOpen, (n) => n.type?.name === 'SectionForm').props.section.key, 'coffee', 'the coffee page draws the coffee form');
+  assert.ok(walk(bareOpen, (n) => n.props?.className === 'apply-page__title'), 'the bare page carries the form title');
+  assert.ok(!walk(bareOpen, (n) => n.type?.name === 'SiteFooter'), 'a bare page has no footer');
+  const bareClosed = await pageWith(open(['interest']), drawCoffee);
+  assert.ok(!walk(bareClosed, (n) => n.type?.name === 'SectionForm'), 'a closed form draws no fields');
+  assert.ok(walk(bareClosed, (n) => Array.isArray(n.props?.children) && n.props.children.some((c) => typeof c === 'string' && c.includes('This form is closed'))), 'a closed form says so');
 
   // The interest form, mounted alone the way the page mounts it.
   const site = FALLBACK_SITE;

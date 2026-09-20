@@ -181,7 +181,8 @@ for (const [page, seo] of INDEXABLE_PAGES) {
     `${page} must use the same stable circular asset for its touch icon`,
   );
   const stylePreloads = html.match(/<link rel="preload" as="style"[^>]*>/g) ?? [];
-  const expectedStylePreloads = ['work', 'members', 'sponsors', 'apply'].includes(page) ? 1 : 0;
+  const expectedStylePreloads =
+    ['work', 'members', 'sponsors', 'apply'].includes(page) || seo.chunk === 'apply' ? 1 : 0;
   assert(
     stylePreloads.length === expectedStylePreloads,
     `${page} has an incorrect number of route stylesheet preloads`,
@@ -280,7 +281,9 @@ for (const [page, seo] of INDEXABLE_PAGES) {
   assert(webPage?.description === seo.description, `${page} WebPage description is incorrect`);
 
   if (page !== 'home') {
-    const routeChunkName = `${page[0].toUpperCase()}${page.slice(1)}`;
+    // A page rendered from another route's chunk preloads that chunk instead.
+    const chunkRoute = seo.chunk || page;
+    const routeChunkName = `${chunkRoute[0].toUpperCase()}${chunkRoute.slice(1)}`;
     assert(
       new RegExp(`rel="modulepreload"[^>]+/assets/${routeChunkName}-[^"/]+\\.js`).test(html),
       `${page} is missing its route module preload`,

@@ -44,7 +44,11 @@ are edited in the wiki under Applications → the cycle → Settings → Website
 sections, and the site follows on its next load. With more than one form open
 the page shows a row of their names; `/apply/?form=coffee` opens one directly.
 When no form is open, the page renders `ApplyClosed.jsx` (the crab and the
-closed note).
+closed note). Each form also has a page of its own with nothing but that form
+on it, no menu and no footer: `/apply/interest/`, `/apply/coffee/`, and
+`/apply/application/` (the `applyInterest`, `applyCoffee`, and
+`applyApplication` entries in `src/seo.js`, marked `bare`, rendered from the
+apply chunk). A closed form's page says so and links to `/apply/`.
 
 - Submissions post to `POST /api/recruit/site/<form>` as
   `{ answers, files, website, confirmUpdate }`. Before the wiki has a cycle

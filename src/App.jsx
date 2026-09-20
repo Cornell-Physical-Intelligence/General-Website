@@ -22,6 +22,9 @@ const Work = lazy(() => import('./pages/Work'));
 const Members = lazy(() => import('./pages/Members'));
 const Sponsors = lazy(() => import('./pages/Sponsors'));
 const Apply = lazy(() => import('./pages/Apply'));
+const ApplyInterest = lazy(() => import('./pages/Apply').then((m) => ({ default: m.ApplyInterest })));
+const ApplyCoffee = lazy(() => import('./pages/Apply').then((m) => ({ default: m.ApplyCoffee })));
+const ApplyApplication = lazy(() => import('./pages/Apply').then((m) => ({ default: m.ApplyApplication })));
 const AboutCupi = lazy(() => import('./pages/AboutCupi'));
 const Faq = lazy(() => import('./pages/Faq'));
 const Vq1Report = lazy(() => import('./pages/Vq1Report'));
@@ -175,6 +178,12 @@ export default function App({ initialPage, InitialPage }) {
         return <Sponsors />;
       case 'apply':
         return <Apply />;
+      case 'applyInterest':
+        return <ApplyInterest />;
+      case 'applyCoffee':
+        return <ApplyCoffee />;
+      case 'applyApplication':
+        return <ApplyApplication />;
       case 'aboutCupi':
         return <AboutCupi />;
       case 'faq':
@@ -189,9 +198,11 @@ export default function App({ initialPage, InitialPage }) {
   };
 
   const onHome = currentPage === 'home';
+  // A bare page (one form at its own address) is the form and nothing else.
+  const bare = Boolean(getPageSeo(currentPage).bare);
   return (
     <div className={`app ${inverted ? 'app--light' : 'app--dark'}`}>
-      <nav className="menu-bar">
+      {!bare && <nav className="menu-bar">
         <div className="menu-glass">
           <div className="menu-content">
             {NAV_ITEMS.map(({ label, page }) => (
@@ -220,7 +231,7 @@ export default function App({ initialPage, InitialPage }) {
             ))}
           </div>
         </div>
-      </nav>
+      </nav>}
 
       {SHOW_CUSTOMIZE && onHome && (
         <button

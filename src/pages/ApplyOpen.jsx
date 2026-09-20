@@ -610,12 +610,10 @@ const pickedFromUrl = () => {
   try { return new URLSearchParams(window.location.search).get('form') || ''; } catch { return ''; }
 };
 
-export default function ApplyOpen() {
-  // null while the wiki answers; then what it published, or the built-in
-  // interest form when it cannot be reached.
+// What the wiki publishes: null while it answers, then the cycle and its
+// forms, or the built-in interest form when it cannot be reached.
+function useSite() {
   const [site, setSite] = useState(null);
-  const [picked, setPicked] = useState(pickedFromUrl);
-
   useEffect(() => {
     const controller = new AbortController();
     fetch(`${API}/api/recruit/site`, { cache: 'no-store', signal: controller.signal })
@@ -626,8 +624,48 @@ export default function ApplyOpen() {
       });
     return () => controller.abort();
   }, []);
+  return site;
+}
 
-  const open = (site?.sections || []).filter((s) => s?.open === true && Array.isArray(s.form?.questions) && s.form.questions.length);
+const isOpen = (s) => s?.open === true && Array.isArray(s.form?.questions) && s.form.questions.length > 0;
+
+// One form at its own address: a white page, no menu, no footer, just the
+// form the wiki publishes under that key. Closed forms say so and point at
+// the Apply page.
+function FormPage({ formKey }) {
+  const site = useSite();
+  const section = (site?.sections || []).find((s) => s?.key === formKey) || null;
+  const open = isOpen(section);
+  return (
+    <main className="alt-page alt-page--apply alt-page--form">
+      <section className="alt-section alt-section--apply">
+        <div className="apply-page">
+          {site && !open && (
+            <p className="apply-page__intro">
+              This form is closed right now. <a className="apply-page__link" href="/apply/">See what is open</a>.
+            </p>
+          )}
+          {open && (
+            <>
+              <h1 className="apply-page__title">{section.title}</h1>
+              <SectionForm key={`${site.cycle?.id || 'legacy'}:${section.key}`} section={section} cycle={site.cycle} />
+            </>
+          )}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+export function ApplyInterest() { return <FormPage formKey="interest" />; }
+export function ApplyCoffee() { return <FormPage formKey="coffee" />; }
+export function ApplyApplication() { return <FormPage formKey="application" />; }
+
+export default function ApplyOpen() {
+  const site = useSite();
+  const [picked, setPicked] = useState(pickedFromUrl);
+
+  const open = (site?.sections || []).filter(isOpen);
   const active = open.find((s) => s.key === picked) || open[0];
   if (site && !active) return <ApplyClosed />;
 

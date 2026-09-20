@@ -15,3 +15,8 @@ import ApplyClosed from './ApplyClosed';
 const APPLY_ACTIVE = true;
 
 export default APPLY_ACTIVE ? ApplyOpen : ApplyClosed;
+
+// One page per form (/apply/interest/, /apply/coffee/, /apply/application/):
+// a white page with nothing but that form. They follow the wiki whatever the
+// switch above says, so a shared link keeps working off season too.
+export { ApplyInterest, ApplyCoffee, ApplyApplication } from './ApplyOpen';
