@@ -5,17 +5,18 @@ re-litigated; they are settled.
 
 ## Do not rewrite finished pages
 
-- **Apply page**: two finished variants behind one switch. `APPLY_ACTIVE` in
-  `src/pages/Apply.jsx` picks `ApplyOpen.jsx` (interest form, recruiting
-  season) or `ApplyClosed.jsx` (crab + closed note, off season). Flip the
-  flag; never rewrite, restyle, or "improve" either variant unprompted. The
-  README section "Apply page: open vs closed" covers the seo.js and sitemap
-  steps that go with a flip.
-- The interest form's backend is the self-contained `lib/interest.js`
-  component in the wiki repo (`Cornell-Physical-Intelligence/wiki`), mounted
-  at `/api/interest*`. Keep it a component: its own tables and routes, one
-  mount point, nothing in the wiki's core state. Never replace it with a
-  third-party form service.
+- **Apply page**: `APPLY_ACTIVE` in `src/pages/Apply.jsx` picks
+  `ApplyOpen.jsx` (recruiting season) or `ApplyClosed.jsx` (crab + closed
+  note, off season). `ApplyOpen.jsx` draws whatever forms the wiki has open
+  from `GET /api/recruit/site`; which forms exist, their questions, and their
+  wording are edited in the wiki, never hardcoded here. Do not restyle or
+  "improve" either page unprompted. The README section "Apply page: what it
+  shows" covers the request and response shapes and the seo.js and sitemap
+  steps.
+- The forms' backend is the wiki repo (`Cornell-Physical-Intelligence/wiki`):
+  `lib/recruit/` behind `/api/recruit/*` and the self-contained
+  `lib/interest.js` at `/api/interest*`. Keep them components with their own
+  tables and routes; never replace them with a third-party form service.
 
 ## Gates that must stay green
 
@@ -39,3 +40,23 @@ re-litigated; they are settled.
 - The hero, gallery, and report pipelines were performance-tuned with
   pixel-parity gates (see git history around 2026-08-19). Do not regress
   transfer size or main-thread work for cosmetic refactors.
+
+## SEO content freeze (September 8, 2026)
+
+- SEO work must not change site content on any platform: the main site,
+  wiki, CampusGroups, or social/GitHub/YouTube profiles and posts. This also
+  prohibits adding, removing, or renaming pages, navigation, and media.
+  A separate, explicit user request for a content change is required.
+- Report existing content drift instead of silently rewriting or deleting
+  it. In particular, `/about-cupi/` and `/faq/` remain live despite their
+  removal from navigation; that finding is not permission to change them.
+- Fix only demonstrated technical defects within the authorized scope.
+  Prove content/output parity, preserve unrelated work, and run the gates
+  above. Do not treat a green metadata verifier as proof of visual or
+  rendered-content parity.
+- Measure Google Web with `pws=0` and `udm=14`, leaving normal duplicate
+  filtering enabled. Do not use `filter=0` for the ranking baseline. Record
+  location, date, surface, and independent result URLs; do not count
+  sitelinks, AI panels, or the owner's Search Console panel as ranks.
+- Do not repeat indexing requests or resubmit already healthy sitemaps.
+  Never attribute a ranking fluctuation to an action without evidence.

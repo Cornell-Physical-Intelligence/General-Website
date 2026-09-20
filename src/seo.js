@@ -67,8 +67,8 @@ export const PAGE_SEO = {
     title: 'CUPI Applications | Cornell Physical Intelligence',
     heading: 'Cornell Physical Intelligence Applications',
     description:
-      'Join the Cornell Physical Intelligence (CUPI) interest list: tell the Cornell robotics team who you are, your subteam of interest, and the coolest project you have built.',
-    lastModified: '2026-08-27',
+      'Apply to Cornell Physical Intelligence (CUPI): join the interest list, request a coffee chat with a member, or send an application when the Cornell robotics team is recruiting.',
+    lastModified: '2026-09-20',
   },
   aboutCupi: {
     path: '/about-cupi/',

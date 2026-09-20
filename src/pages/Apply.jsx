@@ -1,13 +1,13 @@
 // ============================================================================
 // RECRUITING TOGGLE — the one line to change.
 //
-//   true  → ApplyOpen:   the interest form (recruiting season)
-//   false → ApplyClosed: the crab and "applications are closed" note
+//   true  → ApplyOpen:   whatever forms the wiki has open (interest form,
+//                        coffee chats, application); the crab when none is
+//   false → ApplyClosed: the crab and "applications are closed", no wiki call
 //
-// Both variants are finished and reviewed; flip the flag, never rewrite them.
-// When flipping, also consider the `apply` description and lastModified in
-// src/seo.js (and re-sync public/sitemap.xml). Details: README, "Apply page:
-// open vs closed", and AGENTS.md.
+// Which forms are open, their titles, and their questions are edited in the
+// wiki under Applications, not here. Details: README, "Apply page: what it
+// shows", and AGENTS.md.
 // ============================================================================
 import ApplyOpen from './ApplyOpen';
 import ApplyClosed from './ApplyClosed';

@@ -530,3 +530,116 @@
     scroll-margin-top: 80px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Forms the wiki publishes beyond the interest form: a row of names when
+   more than one is open, and the question types the interest form never
+   needed. Same boxes, same type. */
+
+.ifz-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 6px;
+  margin: 0;
+  padding: 0 12px;
+}
+
+.ifz-tab {
+  font: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(var(--fg-rgb), 0.5);
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid transparent;
+  padding: 9px 10px 7px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.ifz-tab:hover,
+.ifz-tab:focus-visible {
+  outline: none;
+  color: var(--fg);
+}
+
+.ifz-tab[aria-pressed='true'] {
+  color: var(--fg);
+  border-bottom-color: var(--fg);
+}
+
+.ifz-textarea {
+  min-height: 88px;
+  resize: none;
+}
+
+/* A file question on its own: the hint and the attach icon share one row;
+   an attached file takes the row over. */
+.ifz-projectbox--file {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+}
+
+.ifz-projectbox__hint {
+  padding: 0 13px;
+  font-size: 0.9rem;
+  color: rgba(var(--fg-rgb), 0.42);
+}
+
+.ifz-projectbox--file .ifz-attach {
+  align-self: center;
+  padding: 6px 10px;
+}
+
+.ifz-projectbox--file .ifz-file {
+  flex: 1;
+  border-top: none;
+  border-radius: 8px;
+}
+
+.ifz-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ifz-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.ifz-check input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--fg);
+  cursor: pointer;
+}
+
+.ifz-help {
+  margin: -2px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(var(--fg-rgb), 0.5);
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+  .ifz-tab,
+  .ifz-check {
+    min-height: 44px;
+  }
+
+  .ifz-textarea {
+    font-size: 16px;
+  }
+}

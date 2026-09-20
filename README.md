@@ -32,22 +32,36 @@ verifications. CI runs it on every push and also requires the committed `docs/`
 build to match a fresh rebuild, so commit the rebuilt `docs/` with any source
 change.
 
-## Apply page: open vs closed
+## Apply page: what it shows
 
-The Apply page has two finished variants and one switch:
+The Apply page is driven by the wiki. `src/pages/ApplyOpen.jsx` asks
+`wiki.cornellphysicalintelligence.com/api/recruit/site` which recruitment
+cycle is receiving the website and which of its three forms are open (the
+interest form, coffee chats, the application), then draws each open form from
+its question list: short and long text, email, one choice, several choices, a
+checkbox, a link, a file. Titles, descriptions, questions, and the open flags
+are edited in the wiki under Applications → the cycle → Settings → Website
+sections, and the site follows on its next load. With more than one form open
+the page shows a row of their names; `/apply/?form=coffee` opens one directly.
+When no form is open, the page renders `ApplyClosed.jsx` (the crab and the
+closed note).
 
-- `src/pages/Apply.jsx` holds `APPLY_ACTIVE`, the only line to change.
-- `true` renders `ApplyOpen.jsx`: the interest form. Submissions post to the
-  wiki backend (`wiki.cornellphysicalintelligence.com/api/interest`, the
-  `lib/interest.js` component in the wiki repo) and appear on the wiki's
-  admin-only `#/interest` screen with CSV export.
-- `false` renders `ApplyClosed.jsx`: the original crab page with the
-  "applications are closed" note.
+- Submissions post to `POST /api/recruit/site/<form>` as
+  `{ answers, files, website, confirmUpdate }`. Before the wiki has a cycle
+  receiving the website, the interest form still posts its flat body to
+  `POST /api/interest`. Both answer 409 `{ exists: true }` when that email
+  already sent the form, and the page asks before replacing.
+- `src/data/applyForms.js` is the fallback when the wiki cannot be reached:
+  the interest form as the wiki publishes it by default. Keep it in step with
+  `lib/recruit/sections.js` in the wiki repo.
+- Drafts stay in localStorage for seven days, one per form
+  (`src/interestDraft.js`); file bytes are never stored, only the file name.
+- `APPLY_ACTIVE` in `src/pages/Apply.jsx` is the off switch: `false` renders
+  `ApplyClosed.jsx` without asking the wiki.
 
-When flipping the switch, do not rewrite either variant. Update the `apply`
-entry's `description` and `lastModified` in `src/seo.js` if the wording no
-longer matches, rebuild, and copy `docs/sitemap.xml` over `public/sitemap.xml`
-(the SEO check requires them identical). If the closed page ever becomes the
-live variant again, its crab is the route's largest contentful paint once
-more; the image preload that used to live in `vite.config.js` (see git
+When the page's wording changes, update the `apply` entry's `description` and
+`lastModified` in `src/seo.js`, rebuild, and copy `docs/sitemap.xml` over
+`public/sitemap.xml` (the SEO check requires them identical). If the closed
+page becomes the usual view again, its crab is the route's largest contentful
+paint; the image preload that used to live in `vite.config.js` (see git
 history) is worth restoring then.
