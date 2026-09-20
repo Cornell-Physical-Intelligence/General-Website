@@ -256,9 +256,7 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, onFile, o
           maxLength={textQuestion.max || 1000}
           placeholder={textQuestion.help || ''}
         />
-      ) : (
-        !file && <span className="ifz-projectbox__hint">Drop {rules.kinds} here</span>
-      )}
+      ) : null}
       {file ? (
         <div className="ifz-file">
           <span className="ifz-file__name">{file.name}</span>
@@ -268,14 +266,9 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, onFile, o
           </button>
         </div>
       ) : (
-        <button
-          id={textQuestion ? undefined : id}
-          type="button"
-          className="ifz-attach"
-          aria-label={`Attach ${rules.kinds}`}
-          title={`Attach ${rules.kinds}`}
-          onClick={() => inputRef.current?.click()}
-        >
+        // A labelled row, not a corner icon: on a phone there is nothing to
+        // drag, so the control has to say what it does.
+        <button id={textQuestion ? undefined : id} type="button" className="ifz-attach" onClick={() => inputRef.current?.click()}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M12 15V4m5 4-5-5-5 5M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
@@ -286,6 +279,8 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, onFile, o
               strokeLinejoin="round"
             />
           </svg>
+          <span>{textQuestion ? `Attach ${rules.kinds}` : `Choose ${rules.kinds}`}</span>
+          <small>up to {rules.cap}</small>
         </button>
       )}
       <input

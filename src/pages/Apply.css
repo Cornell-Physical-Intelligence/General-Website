@@ -147,29 +147,46 @@
   color: rgba(var(--fg-rgb), 0.35);
 }
 
-/* Icon-only, tucked in the box corner: there if they want it. */
+/* A labelled row along the bottom of the box: what it takes and how big. */
 .ifz-attach {
-  align-self: flex-end;
-  display: grid;
-  place-items: center;
-  color: rgba(var(--fg-rgb), 0.42);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: rgba(var(--fg-rgb), 0.62);
   background: transparent;
   border: none;
-  border-radius: 6px;
-  padding: 6px 10px 9px;
+  border-top: 1px solid rgba(var(--fg-rgb), 0.1);
+  border-radius: 0 0 8px 8px;
+  padding: 10px 12px 11px;
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .ifz-attach svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.ifz-attach span {
+  flex: 1;
+}
+
+.ifz-attach small {
+  font-size: 0.75rem;
+  color: rgba(var(--fg-rgb), 0.42);
+  white-space: nowrap;
 }
 
 .ifz-attach:hover,
 .ifz-attach:focus-visible {
   outline: none;
   color: var(--fg);
+  background: rgba(var(--fg-rgb), 0.04);
 }
 
 .ifz-projectbox .ifz-file {
@@ -539,24 +556,12 @@
   resize: none;
 }
 
-/* A file question on its own: the hint and the attach icon share one row;
-   an attached file takes the row over. */
-.ifz-projectbox--file {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 46px;
-}
-
-.ifz-projectbox__hint {
-  padding: 0 13px;
-  font-size: 0.9rem;
-  color: rgba(var(--fg-rgb), 0.42);
-}
-
+/* A file question on its own is the row alone; an attached file takes it
+   over. Dragging onto it still works where there is a pointer. */
 .ifz-projectbox--file .ifz-attach {
-  align-self: center;
-  padding: 6px 10px;
+  border-top: none;
+  border-radius: 8px;
+  padding: 12px 13px;
 }
 
 .ifz-projectbox--file .ifz-file {
