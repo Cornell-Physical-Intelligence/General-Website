@@ -39,12 +39,12 @@ The Apply page is driven by the wiki. `src/pages/ApplyOpen.jsx` asks
 cycle is receiving the website and which of its three forms are open (the
 interest form, coffee chats, the application), then draws each open form from
 its question list: short and long text, email, one choice, several choices, a
-checkbox, a link, a file. Titles, descriptions, questions, and the open flags
-are edited in the wiki under Applications → the cycle → Settings → Website
-sections, and the site follows on its next load. With more than one form open
-the page shows a row of their names; `/apply/?form=coffee` opens one directly.
-When no form is open, the page renders `ApplyClosed.jsx` (the crab and the
-closed note). Each form also has a page of its own with nothing but that form
+checkbox, a link, a file. Titles, descriptions, questions, the open flags, and
+which form `/apply` shows are edited in the wiki under Applications → the
+cycle → the form's tab → Form, and the site follows on its next load. `/apply`
+(the QR code's address) shows one form: the one marked "Shown at /apply" in
+the wiki, else the first open one. When no form is open, the page renders
+`ApplyClosed.jsx` (the crab and the closed note). Each form also has a page of its own with nothing but that form
 on it, no menu and no footer: `/apply/interest/`, `/apply/coffee/`, and
 `/apply/application/` (the `applyInterest`, `applyCoffee`, and
 `applyApplication` entries in `src/seo.js`, marked `bare`, rendered from the

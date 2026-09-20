@@ -113,10 +113,13 @@ try {
   const formNode = walk(legacyPage, (node) => node.type?.name === 'SectionForm');
   assert.equal(formNode.props.section.key, 'interest', 'an unreachable wiki still shows the built-in interest form');
   assert.equal(formNode.props.cycle, null);
-  const open = (keys) => ({ cycle: { id: 'cy-1', name: 'Fall 2026', term: 'Fall 2026', status: 'open' }, sections: FALLBACK_SITE.sections.concat({ key: 'coffee', title: 'Coffee chats', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }).map((s) => ({ ...s, open: keys.includes(s.key) })) });
+  const open = (keys, landing = null) => ({ cycle: { id: 'cy-1', name: 'Fall 2026', term: 'Fall 2026', status: 'open' }, landing, sections: FALLBACK_SITE.sections.concat({ key: 'coffee', title: 'Coffee chats', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }).map((s) => ({ ...s, open: keys.includes(s.key) })) });
   const twoOpen = await pageWith(open(['interest', 'coffee']));
-  assert.equal(walk(twoOpen, (node) => node.props?.className === 'ifz-tabs').props.children.length, 2, 'two open forms show two names');
+  assert.ok(!walk(twoOpen, (node) => node.props?.className === 'ifz-tabs'), '/apply shows one form, never a row of names');
+  assert.equal(walk(twoOpen, (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', 'with no choice, /apply shows the first open form');
   assert.equal(walk(twoOpen, (node) => node.type?.name === 'SectionForm').props.cycle.id, 'cy-1');
+  assert.equal(walk(await pageWith(open(['interest', 'coffee'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'coffee', '/apply shows the form the wiki marks for it');
+  assert.equal(walk(await pageWith(open(['interest'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', 'a closed choice falls back to the first open form');
   assert.equal((await pageWith(open([]))).type?.name, 'ApplyClosed', 'nothing open shows the closed page');
   // A form at its own address: the form alone, or a closed note.
   const mod = await import(pathToFileURL(join(dir, 'src/pages/ApplyOpen.js')));

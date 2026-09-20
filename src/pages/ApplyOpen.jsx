@@ -606,10 +606,6 @@ function SectionForm({ section, cycle }) {
   );
 }
 
-const pickedFromUrl = () => {
-  try { return new URLSearchParams(window.location.search).get('form') || ''; } catch { return ''; }
-};
-
 // What the wiki publishes: null while it answers, then the cycle and its
 // forms, or the built-in interest form when it cannot be reached.
 function useSite() {
@@ -661,12 +657,13 @@ export function ApplyInterest() { return <FormPage formKey="interest" />; }
 export function ApplyCoffee() { return <FormPage formKey="coffee" />; }
 export function ApplyApplication() { return <FormPage formKey="application" />; }
 
+// /apply is where the QR code and the menu land: one form, the one the wiki
+// marks for it, else the first open one. The other open forms live at their
+// own addresses (/apply/coffee/ and so on).
 export default function ApplyOpen() {
   const site = useSite();
-  const [picked, setPicked] = useState(pickedFromUrl);
-
   const open = (site?.sections || []).filter(isOpen);
-  const active = open.find((s) => s.key === picked) || open[0];
+  const active = open.find((s) => s.key === site?.landing) || open[0];
   if (site && !active) return <ApplyClosed />;
 
   return (
@@ -674,15 +671,6 @@ export default function ApplyOpen() {
       <h1 className="visually-hidden">Cornell Physical Intelligence Applications</h1>
       <section className="alt-section alt-section--apply">
         <div className="apply-page">
-          {open.length > 1 && (
-            <div className="ifz-tabs">
-              {open.map((s) => (
-                <button key={s.key} type="button" className="ifz-tab" aria-pressed={s.key === active.key} onClick={() => setPicked(s.key)}>
-                  {s.title}
-                </button>
-              ))}
-            </div>
-          )}
           {active && <SectionForm key={`${site.cycle?.id || 'legacy'}:${active.key}`} section={active} cycle={site.cycle} />}
         </div>
       </section>

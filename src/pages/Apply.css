@@ -532,44 +532,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Forms the wiki publishes beyond the interest form: a row of names when
-   more than one is open, and the question types the interest form never
-   needed. Same boxes, same type. */
-
-.ifz-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 2px 6px;
-  margin: 0;
-  padding: 0 12px;
-}
-
-.ifz-tab {
-  font: inherit;
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: rgba(var(--fg-rgb), 0.5);
-  background: transparent;
-  border: none;
-  border-bottom: 1.5px solid transparent;
-  padding: 9px 10px 7px;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.ifz-tab:hover,
-.ifz-tab:focus-visible {
-  outline: none;
-  color: var(--fg);
-}
-
-.ifz-tab[aria-pressed='true'] {
-  color: var(--fg);
-  border-bottom-color: var(--fg);
-}
+   Question types the interest form never needed. Same boxes, same type. */
 
 .ifz-textarea {
   min-height: 88px;
@@ -634,7 +597,6 @@
 }
 
 @media (max-width: 640px), (pointer: coarse) {
-  .ifz-tab,
   .ifz-check {
     min-height: 44px;
   }
