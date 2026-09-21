@@ -74,15 +74,15 @@ const BUILD_ENRICHMENT = {
   },
   apply: {
     highlights: [
-      'Join the CUPI interest list from the Apply page',
-      'Tell the team your subteam of interest and the coolest project you have built',
+      'Send the form the CUPI team currently has open',
+      'Each form has a page of its own for a direct link',
       'Explore CUPI robotics projects and technical reports',
     ],
     fallbackSections: [
       {
         heading: 'Joining CUPI',
         paragraphs: [
-          'The Apply page carries an interest form: name, email, subteam of interest, and the coolest project you have done. The team reaches out from that list when recruiting opens.',
+          'The Apply page shows the form the team currently has open, from the interest list to coffee chats and applications; each form also has a page of its own. The team reaches out from what you send when recruiting moves along.',
           'Questions about recruitment can go to cuphysint@cornell.edu.',
         ],
       },

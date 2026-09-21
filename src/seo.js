@@ -67,9 +67,9 @@ export const PAGE_SEO = {
     title: 'CUPI Applications | Cornell Physical Intelligence',
     heading: 'Cornell Physical Intelligence Applications',
     description:
-      'Apply to Cornell Physical Intelligence (CUPI): join the interest list, request a coffee chat with a member, or send an application when the Cornell robotics team is recruiting.',
+      'Apply to Cornell Physical Intelligence (CUPI): the form the Cornell robotics team currently has open, from the interest list to coffee chats and applications.',
     relatedHeading: 'Forms',
-    lastModified: '2026-09-20',
+    lastModified: '2026-09-21',
   },
   // Each form the wiki publishes has a page of its own, so a link can point at
   // one form while /apply/ keeps showing whatever is open. The wiki decides
@@ -94,13 +94,13 @@ export const PAGE_SEO = {
     title: 'CUPI Coffee Chats | Cornell Physical Intelligence',
     heading: 'Cornell Physical Intelligence Coffee Chats',
     description:
-      'Request a coffee chat with a current Cornell Physical Intelligence (CUPI) member before you apply: pick a subteam you want to hear about and tell the team when you are free.',
+      'Request a coffee chat with a current Cornell Physical Intelligence (CUPI) member before you apply to the Cornell robotics team.',
     highlights: [],
     parentPage: 'apply',
     chunk: 'apply',
     bare: true,
     form: 'coffee',
-    lastModified: '2026-09-20',
+    lastModified: '2026-09-21',
   },
   applyApplication: {
     path: '/apply/application/',
@@ -108,13 +108,13 @@ export const PAGE_SEO = {
     title: 'CUPI Application | Cornell Physical Intelligence',
     heading: 'Cornell Physical Intelligence Application',
     description:
-      'Apply to Cornell Physical Intelligence (CUPI), the Cornell University student robotics team: your year, the subteam you want to join, why you want to join, and what you have built.',
+      'The application form for Cornell Physical Intelligence (CUPI), the Cornell University student robotics team.',
     highlights: [],
     parentPage: 'apply',
     chunk: 'apply',
     bare: true,
     form: 'application',
-    lastModified: '2026-09-20',
+    lastModified: '2026-09-21',
   },
   aboutCupi: {
     path: '/about-cupi/',

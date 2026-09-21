@@ -36,7 +36,7 @@ export const normalizeLegacyHash = () => {
   if (VALID_PAGES.includes(legacy)) {
     window.history.replaceState({}, '', legacy === 'home' ? '/' : `/${legacy}`);
   } else if (window.location.hash) {
-    window.history.replaceState({}, '', window.location.pathname);
+    window.history.replaceState({}, '', window.location.pathname + window.location.search);
   }
 };
 

@@ -1,0 +1,1 @@
+var e=[`image/png`,`image/jpeg`,`image/webp`,`image/gif`,`application/pdf`],t=2.5*1024*1024,n=/^[a-z][a-z0-9_-]{0,39}$/,r=e=>{try{let t=new URLSearchParams(e||``).get(`form`)||``;return n.test(t)?t:``}catch{return``}};export{t as n,r,e as t};

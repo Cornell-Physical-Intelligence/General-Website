@@ -36,8 +36,9 @@ change.
 
 The Apply page is driven by the wiki. `src/pages/ApplyOpen.jsx` asks
 `wiki.cornellphysicalintelligence.com/api/recruit/site` which recruitment
-cycle is receiving the website and which of its three forms are open (the
-interest form, coffee chats, the application), then draws each open form from
+cycle is receiving the website and which of its forms are open (a cycle
+starts with an interest form, coffee chats and an application form, and the
+team adds or removes forms in the wiki), then draws each open form from
 its question list: short and long text, email, one choice, several choices, a
 checkbox, a link, a file. Titles, descriptions, questions, the open flags, and
 which form `/apply` shows are edited in the wiki under Applications → the
@@ -53,13 +54,13 @@ address `/apply/<key>/` is sent by `404.html` to `/apply/?form=<key>`, which
 draws the same bare page. A closed form's page says so and links to `/apply/`.
 
 - Submissions post to `POST /api/recruit/site/<form>` as
-  `{ answers, files, website, confirmUpdate }`. Before the wiki has a cycle
-  receiving the website, the interest form still posts its flat body to
-  `POST /api/interest`. Both answer 409 `{ exists: true }` when that email
-  already sent the form, and the page asks before replacing.
-- `src/data/applyForms.js` is the fallback when the wiki cannot be reached:
-  the interest form as the wiki publishes it by default. Keep it in step with
-  `lib/recruit/sections.js` in the wiki repo.
+  `{ answers, files, website, confirmUpdate }`, which answers 409
+  `{ exists: true }` when that email already sent the form; the page asks
+  before replacing. When no cycle receives the website the feed lists no
+  forms and the page renders the closed view.
+- When the wiki cannot be reached the page says so and gives the contact
+  email; it never draws a form it could not send. `src/data/applyForms.js`
+  holds only the file rules and the shape of a form key.
 - Drafts stay in localStorage for seven days, one per form
   (`src/interestDraft.js`); file bytes are never stored, only the file name.
 - `APPLY_ACTIVE` in `src/pages/Apply.jsx` is the off switch: `false` renders

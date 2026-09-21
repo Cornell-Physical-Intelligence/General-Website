@@ -14,9 +14,9 @@ re-litigated; they are settled.
   shows" covers the request and response shapes and the seo.js and sitemap
   steps.
 - The forms' backend is the wiki repo (`Cornell-Physical-Intelligence/wiki`):
-  `lib/recruit/` behind `/api/recruit/*` and the self-contained
-  `lib/interest.js` at `/api/interest*`. Keep them components with their own
-  tables and routes; never replace them with a third-party form service.
+  `lib/recruit/` behind `/api/recruit/*` (the feed at `/api/recruit/site`,
+  submissions at `/api/recruit/site/<form>`). Keep it a component with its own
+  tables and routes; never replace it with a third-party form service.
 
 ## Gates that must stay green
 

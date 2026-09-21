@@ -9,8 +9,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import SiteFooter from '../components/SiteFooter';
 import ApplyClosed from './ApplyClosed';
-import { loadDraft, saveDraft, clearDraft, loadLegacyInterestDraft } from '../interestDraft';
-import { FALLBACK_SITE, FILE_TYPES, MAX_FILE_BYTES, formKeyFromSearch } from '../data/applyForms';
+import { loadDraft, saveDraft, clearDraft } from '../interestDraft';
+import { FILE_TYPES, MAX_FILE_BYTES, formKeyFromSearch } from '../data/applyForms';
 import './Apply.css';
 
 // Submissions go to the wiki's backend: same Postgres and email the team
@@ -23,8 +23,10 @@ const API = import.meta.env.DEV
 const CONTACT_EMAIL = 'cuphysint@cornell.edu';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-// Button, confirmation, and closing note per form. A form the wiki adds
-// later gets the plain wording.
+// Button, confirmation, and closing note for the three forms a cycle starts
+// with, used while they still carry their default titles; any other form,
+// or a retitled one, gets the plain wording built from its title.
+const DEFAULT_TITLES = { interest: ['interest form', 'interest list'], coffee: ['coffee chats', 'coffee chat'], application: ['application form', 'application', 'applications'] };
 const WORDING = {
   interest: {
     submit: 'Join the interest list',
@@ -45,8 +47,12 @@ const WORDING = {
     dupe: 'You already applied with this email',
   },
 };
-const wordingFor = (key) =>
-  WORDING[key] || { submit: 'Send', done: 'Sent', note: 'Thanks. We read every one of these.', dupe: 'You already sent this form with this email' };
+const wordingFor = (section) => {
+  const title = String(section?.title || '').trim();
+  const stock = WORDING[section?.key];
+  if (stock && (DEFAULT_TITLES[section.key] || []).includes(title.toLowerCase())) return stock;
+  return { submit: 'Send', done: 'Sent', note: 'Thanks. We read every one of these.', dupe: `You already sent the ${title || 'form'} with this email` };
+};
 
 // The top row of a choice question. Subteam keeps the site's old "Not sure
 // yet"; every other choice says what it is waiting for.
@@ -57,7 +63,7 @@ const idFor = (section, q) => `apply-${section.key}-${q.key}`;
 // The site rule is no native pickers on styled surfaces, so a choice control
 // is a listbox with roving focus: arrows move, Enter picks, Esc returns to
 // the button, and a click anywhere else closes it.
-function InterestSelect({ value, onChange, options, labelId, required = false }) {
+function ChoiceSelect({ value, onChange, options, labelId, required = false }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const buttonRef = useRef(null);
@@ -305,14 +311,14 @@ const readAsBase64 = (file) =>
     reader.readAsDataURL(file);
   });
 
-// A written question directly followed by a file question shares one box
-// with it, the way the interest form's project question always has.
+// The interest form's project question shares one box with its photo
+// question, as it always has; every other file question is its own box.
 const rowsOf = (questions) => {
   const rows = [];
   for (let i = 0; i < questions.length; i += 1) {
     const q = questions[i];
     const next = questions[i + 1];
-    if (q.type === 'long' && next?.type === 'file') {
+    if (q.key === 'project' && q.type === 'long' && next?.key === 'file' && next.type === 'file') {
       rows.push({ q, file: next });
       i += 1;
     } else rows.push({ q });
@@ -336,10 +342,10 @@ const initialState = (section, draft) => {
   return { values, cues };
 };
 
-function SectionForm({ section, cycle }) {
+function SectionForm({ section }) {
   const questions = section.form.questions;
-  const wording = wordingFor(section.key);
-  const [start] = useState(() => initialState(section, loadDraft(section.key) || (section.key === 'interest' ? loadLegacyInterestDraft() : null)));
+  const wording = wordingFor(section);
+  const [start] = useState(() => initialState(section, loadDraft(section.key)));
   const [values, setValues] = useState(start.values);
   const [files, setFiles] = useState({});
   // Names of files a restored draft had attached, until they are attached again.
@@ -428,13 +434,10 @@ function SectionForm({ section, cycle }) {
       }
       const website = honeypotRef.current?.value || '';
       const extra = confirmUpdate ? { confirmUpdate: true } : {};
-      // Until the wiki has a cycle receiving the website, the interest form
-      // still lands in its old inbox through its old route and flat body.
-      const legacy = !cycle && section.key === 'interest';
-      const res = await fetch(legacy ? `${API}/api/interest` : `${API}/api/recruit/site/${encodeURIComponent(section.key)}`, {
+      const res = await fetch(`${API}/api/recruit/site/${encodeURIComponent(section.key)}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(legacy ? { ...answers, file: attached.file || null, website, ...extra } : { answers, files: attached, website, ...extra }),
+        body: JSON.stringify({ answers, files: attached, website, ...extra }),
       });
       const out = await res.json().catch(() => ({}));
       // Already sent: ask before overwriting what they sent before, unless
@@ -480,13 +483,13 @@ function SectionForm({ section, cycle }) {
     }
     if (q.type === 'single') {
       const blank = placeholderFor(q);
-      return <InterestSelect value={v || blank} onChange={(next) => setValue(q.key, next === blank ? '' : next)} options={[blank, ...(q.options || [])]} labelId={`${id}-label`} required={q.required} />;
+      return <ChoiceSelect value={v || blank} onChange={(next) => setValue(q.key, next === blank ? '' : next)} options={[blank, ...(q.options || [])]} labelId={`${id}-label`} required={q.required} />;
     }
     if (q.type === 'multi') {
       return (
         <div className="ifz-checks" role="group" aria-labelledby={`${id}-label`}>
           {(q.options || []).map((option, i) => (
-            <label key={option} className="ifz-check">
+            <label key={option} className="ifz-option">
               <input
                 id={i === 0 ? id : undefined}
                 type="checkbox"
@@ -501,7 +504,7 @@ function SectionForm({ section, cycle }) {
     }
     if (q.type === 'checkbox') {
       return (
-        <label className="ifz-check" htmlFor={id}>
+        <label className="ifz-option" htmlFor={id}>
           <input id={id} type="checkbox" checked={v === true} onChange={(event) => setValue(q.key, event.target.checked)} />
           {q.help || 'Yes'}
         </label>
@@ -604,16 +607,18 @@ function SectionForm({ section, cycle }) {
 }
 
 // What the wiki publishes: null while it answers, then the cycle and its
-// forms, or the built-in interest form when it cannot be reached.
+// forms. When it cannot be reached the page says so rather than showing a
+// form that could not be sent.
+const UNREACHABLE = { cycle: null, landing: null, sections: [], error: true };
 function useSite() {
   const [site, setSite] = useState(null);
   useEffect(() => {
     const controller = new AbortController();
     fetch(`${API}/api/recruit/site`, { cache: 'no-store', signal: controller.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((out) => setSite(Array.isArray(out?.sections) ? out : FALLBACK_SITE))
+      .then((out) => setSite(Array.isArray(out?.sections) ? out : UNREACHABLE))
       .catch(() => {
-        if (!controller.signal.aborted) setSite(FALLBACK_SITE);
+        if (!controller.signal.aborted) setSite(UNREACHABLE);
       });
     return () => controller.abort();
   }, []);
@@ -621,6 +626,8 @@ function useSite() {
 }
 
 const isOpen = (s) => s?.open === true && Array.isArray(s.form?.questions) && s.form.questions.length > 0;
+
+const UNREACHABLE_NOTE = `We could not load the form right now. Try again in a moment, or email ${CONTACT_EMAIL}.`;
 
 // One form at its own address: a white page, no menu, no footer, just the
 // form the wiki publishes under that key. Closed forms say so and point at
@@ -633,7 +640,8 @@ function FormPage({ formKey }) {
     <main className="alt-page alt-page--apply alt-page--form">
       <section className="alt-section alt-section--apply">
         <div className="apply-page">
-          {site && !open && (
+          {site?.error && <p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p>}
+          {site && !site.error && !open && (
             <p className="apply-page__intro">
               This form is closed right now. <a className="apply-page__link" href="/apply/">See what is open</a>.
             </p>
@@ -641,7 +649,7 @@ function FormPage({ formKey }) {
           {open && (
             <>
               <h1 className="apply-page__title">{section.title}</h1>
-              <SectionForm key={`${site.cycle?.id || 'legacy'}:${section.key}`} section={section} cycle={site.cycle} />
+              <SectionForm key={`${site.cycle?.id || 'none'}:${section.key}`} section={section} />
             </>
           )}
         </div>
@@ -669,14 +677,15 @@ function ApplyLanding() {
   const site = useSite();
   const open = (site?.sections || []).filter(isOpen);
   const active = open.find((s) => s.key === site?.landing) || open[0];
-  if (site && !active) return <ApplyClosed />;
+  if (site && !active && !site.error) return <ApplyClosed />;
 
   return (
     <main className="alt-page alt-page--apply">
       <h1 className="visually-hidden">Cornell Physical Intelligence Applications</h1>
       <section className="alt-section alt-section--apply">
         <div className="apply-page">
-          {active && <SectionForm key={`${site.cycle?.id || 'legacy'}:${active.key}`} section={active} cycle={site.cycle} />}
+          {site?.error && <p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p>}
+          {active && <SectionForm key={`${site.cycle?.id || 'none'}:${active.key}`} section={active} />}
         </div>
       </section>
       <SiteFooter />

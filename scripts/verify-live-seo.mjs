@@ -125,7 +125,7 @@ for (const [page, seo] of INDEXABLE_PAGES) {
     `${page} does not use the stable circular touch icon`,
   );
   const stylePreloads = text.match(/<link rel="preload" as="style"[^>]*>/g) ?? [];
-  const expectedStylePreloads = ['work', 'members', 'sponsors', 'apply'].includes(page) ? 1 : 0;
+  const expectedStylePreloads = ['work', 'members', 'sponsors', 'apply'].includes(page) || PAGE_SEO[page]?.chunk === 'apply' ? 1 : 0;
   assert(
     stylePreloads.length === expectedStylePreloads,
     `${page} has an incorrect number of live route stylesheet preloads`,

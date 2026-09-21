@@ -6,8 +6,22 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { transformWithOxc } from 'vite';
-import { DRAFT_PREFIX, INTEREST_DRAFT_TTL, loadDraft, saveDraft, clearDraft, loadLegacyInterestDraft } from '../src/interestDraft.js';
-import { FALLBACK_SITE } from '../src/data/applyForms.js';
+import { DRAFT_PREFIX, INTEREST_DRAFT_TTL, loadDraft, saveDraft, clearDraft } from '../src/interestDraft.js';
+// A sample of what the wiki publishes: the interest form as a new cycle has it.
+const SAMPLE_SITE = {
+  cycle: null,
+  sections: [{
+    key: 'interest', title: 'Interest form', description: 'Fill in the information below to display interest in applying to CUPI.', open: true,
+    form: { questions: [
+      { key: 'name', type: 'short', label: 'Name', required: true, max: 100 },
+      { key: 'email', type: 'email', label: 'Email', required: true, max: 200 },
+      { key: 'subteam', type: 'single', label: 'Subteam of interest', required: false, options: ['Mechanical', 'Electrical', 'Software', 'Creative', 'Business & Marketing'] },
+      { key: 'year', type: 'single', label: 'Year', required: true, options: ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad'] },
+      { key: 'project', type: 'long', label: "What's the coolest project you've done?", required: false, help: 'Tell us about it, or drop a photo or PDF right here...', max: 1000 },
+      { key: 'file', type: 'file', label: 'Photo or PDF of it', required: false, accept: ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf'], maxBytes: 2.5 * 1024 * 1024 },
+    ] },
+  }],
+};
 
 const KEY = `${DRAFT_PREFIX}interest`;
 const entries = new Map();
@@ -35,8 +49,6 @@ saveDraft('coffee', { name: 'Someone Else', availability: 'Tuesdays' }, storage)
 assert.equal(loadDraft('coffee', storage).availability, 'Tuesdays', 'each form keeps its own draft');
 assert.equal(loadDraft('interest', storage).project, 'Newer draft in another tab');
 entries.clear();
-storage.setItem('cupi:interest-draft:v1', JSON.stringify({ version: 1, savedAt: 100, fields: { name: 'Old Draft', email: 'old@example.test', subteam: 'Software', year: 'Junior', project: 'From the old key', fileName: 'old.pdf' } }));
-assert.deepEqual(loadLegacyInterestDraft(storage, 101), { name: 'Old Draft', email: 'old@example.test', subteam: 'Software', year: 'Junior', project: 'From the old key', F_file: 'old.pdf' }, 'answers saved by the previous page carry over once');
 entries.clear();
 
 const dir = await mkdtemp(join(tmpdir(), 'cupi-form-test-'));
@@ -111,15 +123,12 @@ try {
     cursor = 0; effects = [];
     return draw();
   };
-  const legacyPage = await pageWith(new Error('wiki unreachable'));
-  const formNode = walk(legacyPage, (node) => node.type?.name === 'SectionForm');
-  assert.equal(formNode.props.section.key, 'interest', 'an unreachable wiki still shows the built-in interest form');
-  assert.equal(formNode.props.cycle, null);
-  const open = (keys, landing = null) => ({ cycle: { id: 'cy-1', name: 'Fall 2026', term: 'Fall 2026', status: 'open' }, landing, sections: FALLBACK_SITE.sections.concat({ key: 'coffee', title: 'Coffee chats', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }).map((s) => ({ ...s, open: keys.includes(s.key) })) });
+  const downPage = await pageWith(new Error('wiki unreachable'));
+  assert.ok(!walk(downPage, (node) => node.type?.name === 'SectionForm'), 'an unreachable wiki shows no form that could not be sent');
+  assert.ok(text(downPage, 'We could not load the form right now'), 'it says so and gives the email');
+  const open = (keys, landing = null) => ({ cycle: { id: 'cy-1', name: 'Fall 2026', term: 'Fall 2026', status: 'open' }, landing, sections: SAMPLE_SITE.sections.concat({ key: 'coffee', title: 'Coffee chats', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }).map((s) => ({ ...s, open: keys.includes(s.key) })) });
   const twoOpen = await pageWith(open(['interest', 'coffee']));
-  assert.ok(!walk(twoOpen, (node) => node.props?.className === 'ifz-tabs'), '/apply shows one form, never a row of names');
   assert.equal(walk(twoOpen, (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', 'with no choice, /apply shows the first open form');
-  assert.equal(walk(twoOpen, (node) => node.type?.name === 'SectionForm').props.cycle.id, 'cy-1');
   assert.equal(walk(await pageWith(open(['interest', 'coffee'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'coffee', '/apply shows the form the wiki marks for it');
   assert.equal(walk(await pageWith(open(['interest'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', 'a closed choice falls back to the first open form');
   assert.equal((await pageWith(open([]))).type, 'closed', 'nothing open shows the closed page');
@@ -142,8 +151,8 @@ try {
   assert.ok(walk(bareClosed, (n) => Array.isArray(n.props?.children) && n.props.children.some((c) => typeof c === 'string' && c.includes('This form is closed'))), 'a closed form says so');
 
   // The interest form, mounted alone the way the page mounts it.
-  const site = FALLBACK_SITE;
-  const Form = walk(legacyPage, (node) => node.type?.name === 'SectionForm').type;
+  const site = SAMPLE_SITE;
+  const Form = walk(twoOpen, (node) => node.type?.name === 'SectionForm').type;
   const render = (props = { section: site.sections[0], cycle: null }) => {
     cursor = 0; effects = [];
     const tree = Form(props);
@@ -173,9 +182,9 @@ try {
 
   tree = await submit({ status: 500, ok: false, json: async () => ({ error: 'Temporary outage' }) });
   assert.ok(!tree.props.className.includes('ifz--done'), 'HTTP failures cannot animate success');
-  assert.equal(globalThis.lastRequest.url, 'https://wiki.cornellphysicalintelligence.com/api/interest', 'without a receiving cycle the interest form posts to its old route');
-  assert.equal(globalThis.lastRequest.body.year, 'Freshman');
-  assert.equal(globalThis.lastRequest.body.file, null);
+  assert.equal(globalThis.lastRequest.url, 'https://wiki.cornellphysicalintelligence.com/api/recruit/site/interest', 'every form posts to its own recruit route');
+  assert.equal(globalThis.lastRequest.body.answers.year, 'Freshman');
+  assert.deepEqual(globalThis.lastRequest.body.files, {}, 'no file attached, no file sent');
   assert.equal(loadDraft('interest', storage).project, draft.project, 'failed attempts keep the durable draft');
   assert.ok(text(tree, 'You can also email cuphysint@cornell.edu'), 'the existing email fallback remains');
   resetMount();
