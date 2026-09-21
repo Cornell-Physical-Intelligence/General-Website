@@ -50,8 +50,12 @@ const WORDING = {
 const wordingFor = (section) => {
   const title = String(section?.title || '').trim();
   const stock = WORDING[section?.key];
-  if (stock && (DEFAULT_TITLES[section.key] || []).includes(title.toLowerCase())) return stock;
-  return { submit: 'Send', done: 'Sent', note: 'Thanks. We read every one of these.', dupe: `You already sent the ${title || 'form'} with this email` };
+  const base = stock && (DEFAULT_TITLES[section.key] || []).includes(title.toLowerCase())
+    ? stock
+    : { submit: 'Send', done: 'Sent', note: 'Thanks. We read every one of these.', dupe: `You already sent the ${title || 'form'} with this email` };
+  // What they read after sending is the form's own line from the wiki.
+  const thanks = String(section?.thanks || '').trim();
+  return thanks ? { ...base, note: thanks } : base;
 };
 
 // The top row of a choice question. Subteam keeps the site's old "Not sure
@@ -318,6 +322,8 @@ const rowsOf = (questions) => {
   for (let i = 0; i < questions.length; i += 1) {
     const q = questions[i];
     const next = questions[i + 1];
+    // A long-text-plus-file question is one box on its own.
+    if (q.type === 'longfile') { rows.push({ q, file: q }); continue; }
     if (q.key === 'project' && q.type === 'long' && next?.key === 'file' && next.type === 'file') {
       rows.push({ q, file: next });
       i += 1;
@@ -332,8 +338,9 @@ const initialState = (section, draft) => {
   const cues = {};
   for (const q of section.form.questions) {
     const v = draft?.[q.key];
+    if ((q.type === 'file' || q.type === 'longfile') && typeof draft?.[`F_${q.key}`] === 'string') cues[q.key] = draft[`F_${q.key}`];
     if (q.type === 'file') {
-      if (typeof draft?.[`F_${q.key}`] === 'string') cues[q.key] = draft[`F_${q.key}`];
+      // nothing typed for a file question
     } else if (q.type === 'single') values[q.key] = typeof v === 'string' && (q.options || []).includes(v) ? v : '';
     else if (q.type === 'multi') values[q.key] = Array.isArray(v) ? v.filter((x) => (q.options || []).includes(x)) : [];
     else if (q.type === 'checkbox') values[q.key] = v === true;
@@ -360,7 +367,7 @@ function SectionForm({ section }) {
   const draftOf = () => {
     const out = { ...values };
     for (const q of questions) {
-      if (q.type !== 'file') continue;
+      if (q.type !== 'file' && q.type !== 'longfile') continue;
       const name = files[q.key]?.name || cues[q.key];
       if (name) out[`F_${q.key}`] = name;
     }
@@ -371,7 +378,7 @@ function SectionForm({ section }) {
     if (status === 'done') return;
     const out = { ...values };
     for (const q of questions) {
-      if (q.type !== 'file') continue;
+      if (q.type !== 'file' && q.type !== 'longfile') continue;
       const name = files[q.key]?.name || cues[q.key];
       if (name) out[`F_${q.key}`] = name;
     }
@@ -393,6 +400,10 @@ function SectionForm({ section }) {
       const at = (suffix = '') => `${id}${suffix}`;
       if (q.type === 'file') {
         if (q.required && !files[q.key]) return [`Attach ${fileRules(q).kinds} for ${label}.`, at()];
+        continue;
+      }
+      if (q.type === 'longfile') {
+        if (q.required && !String(v).trim() && !files[q.key]) return [`${label} is required: write something or attach ${fileRules(q).kinds}.`, at()];
         continue;
       }
       if (q.key === 'name' && !String(v).trim()) return ['Tell us your name.', at()];
@@ -430,7 +441,7 @@ function SectionForm({ section }) {
       }
       const attached = {};
       for (const q of questions) {
-        if (q.type === 'file' && files[q.key]) attached[q.key] = { name: files[q.key].name, type: files[q.key].type, data: await readAsBase64(files[q.key]) };
+        if ((q.type === 'file' || q.type === 'longfile') && files[q.key]) attached[q.key] = { name: files[q.key].name, type: files[q.key].type, data: await readAsBase64(files[q.key]) };
       }
       const website = honeypotRef.current?.value || '';
       const extra = confirmUpdate ? { confirmUpdate: true } : {};
@@ -466,7 +477,7 @@ function SectionForm({ section }) {
   };
 
   const done = status === 'done';
-  const missing = questions.filter((q) => q.type === 'file' && cues[q.key] && !files[q.key]).map((q) => cues[q.key]);
+  const missing = questions.filter((q) => (q.type === 'file' || q.type === 'longfile') && cues[q.key] && !files[q.key]).map((q) => cues[q.key]);
   const attachmentReminder = missing.length ? `Your answers were restored. Attach ${missing.join(' and ')} again if you want to include it.` : '';
 
   const control = ({ q, file }) => {
@@ -474,6 +485,9 @@ function SectionForm({ section }) {
     const v = values[q.key];
     if (q.type === 'file') {
       return <FileBox id={id} fileQuestion={q} file={files[q.key] || null} onFile={(next) => setFile(q.key, next)} onProblem={setError} />;
+    }
+    if (q.type === 'longfile') {
+      return <FileBox id={id} textQuestion={q} text={v} onText={(next) => setValue(q.key, next)} fileQuestion={q} file={files[q.key] || null} onFile={(next) => setFile(q.key, next)} onProblem={setError} />;
     }
     if (q.type === 'long') {
       if (file) {
