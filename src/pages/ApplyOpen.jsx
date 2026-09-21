@@ -685,7 +685,12 @@ function ApplyLanding() {
       <section className="alt-section alt-section--apply">
         <div className="apply-page">
           {site?.error && <p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p>}
-          {active && <SectionForm key={`${site.cycle?.id || 'none'}:${active.key}`} section={active} />}
+          {active && (
+            <>
+              <h2 className="apply-page__title">{active.title}</h2>
+              <SectionForm key={`${site.cycle?.id || 'none'}:${active.key}`} section={active} />
+            </>
+          )}
         </div>
       </section>
       <SiteFooter />
