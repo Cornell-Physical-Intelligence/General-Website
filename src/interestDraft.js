@@ -1,5 +1,5 @@
 // Unsent answers stay on this browser for seven days, one draft per form
-// key. File bytes are never copied into localStorage; only the name is
+// and cycle. File bytes are never copied into localStorage; only the name is
 // retained as a reattachment cue under `F_<question key>`.
 export const DRAFT_PREFIX = 'cupi:form-draft:v2:';
 export const INTEREST_DRAFT_TTL = 7 * 24 * 60 * 60 * 1000;
@@ -11,8 +11,8 @@ const keyFor = (form) => DRAFT_PREFIX + String(form || '');
 const clean = (values) => {
   const out = {};
   for (const [k, v] of Object.entries(values || {})) {
-    if (!/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/.test(k)) continue;
-    if (typeof v === 'string') { if (v) out[k] = v.slice(0, 2000); }
+    if (!/^[a-zA-Z][a-zA-Z0-9_]{0,41}$/.test(k)) continue;
+    if (typeof v === 'string') { if (v) out[k] = v.slice(0, 20000); }
     else if (Array.isArray(v)) { const list = v.filter((x) => typeof x === 'string').slice(0, 40); if (list.length) out[k] = list; }
     else if (v === true) out[k] = true;
   }

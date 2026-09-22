@@ -61,10 +61,10 @@ draws the same bare page. A closed form's page says so and links to `/apply/`.
 - When the wiki cannot be reached the page says so and gives the contact
   email; it never draws a form it could not send. `src/data/applyForms.js`
   holds only the file rules and the shape of a form key.
-- Drafts stay in localStorage for seven days, one per form
+- Drafts stay in localStorage for seven days, one per cycle and form
   (`src/interestDraft.js`); file bytes are never stored, only the file name.
-- `APPLY_ACTIVE` in `src/pages/Apply.jsx` is the off switch: `false` renders
-  `ApplyClosed.jsx` without asking the wiki.
+- The wiki feed is the only availability switch. Close forms or the receiving cycle in the wiki; direct links follow the same state. A full form tells existing applicants they can still update.
+- For local integration testing, set `VITE_RECRUIT_API=http://127.0.0.1:<port>` when the wiki runs on a different development port.
 
 When the page's wording changes, update the `apply` entry's `description` and
 `lastModified` in `src/seo.js`, rebuild, and copy `docs/sitemap.xml` over

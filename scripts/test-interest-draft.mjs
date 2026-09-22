@@ -23,31 +23,36 @@ const SAMPLE_SITE = {
   }],
 };
 
-const KEY = `${DRAFT_PREFIX}interest`;
+const KEY = `${DRAFT_PREFIX}cy-test:interest`;
 const entries = new Map();
 const storage = {
   getItem: (key) => entries.get(key) ?? null,
   setItem: (key, value) => entries.set(key, value),
   removeItem: (key) => entries.delete(key),
 };
+const longestKey = 'a'.repeat(40);
+const longDraft = {essay:'x'.repeat(20000), ['F_' + longestKey]:'resume.pdf'};
+saveDraft('cycle-a:custom',longDraft,storage,100);
+assert.deepEqual(loadDraft('cycle-a:custom',storage,101),longDraft,'long answers and file cues for 40-character keys survive');
+assert.equal(loadDraft('cycle-b:custom',storage,101),null,'another cycle never inherits these answers');
 const draft = { name: 'Test Member', email: 'synthetic@example.test', year: 'Freshman', subteam: 'Software', project: 'A synthetic robot', F_file: 'robot.pdf' };
-assert.equal(saveDraft('interest', { ...draft, file: { data: 'NEVER STORE FILE BYTES' }, 'bad key!': 'x' }, storage, 100), true);
-assert.deepEqual(loadDraft('interest', storage, 101), draft);
+assert.equal(saveDraft('cy-test:interest', { ...draft, file: { data: 'NEVER STORE FILE BYTES' }, 'bad key!': 'x' }, storage, 100), true);
+assert.deepEqual(loadDraft('cy-test:interest', storage, 101), draft);
 assert.ok(!storage.getItem(KEY).includes('NEVER STORE FILE BYTES'));
-assert.equal(loadDraft('interest', storage, 100 + INTEREST_DRAFT_TTL), null, 'expired answers are removed');
+assert.equal(loadDraft('cy-test:interest', storage, 100 + INTEREST_DRAFT_TTL), null, 'expired answers are removed');
 assert.equal(storage.getItem(KEY), null);
 storage.setItem(KEY, '{broken');
-assert.equal(loadDraft('interest', storage), null, 'corrupt browser storage does not break the form');
+assert.equal(loadDraft('cy-test:interest', storage), null, 'corrupt browser storage does not break the form');
 const blocked = { getItem() { throw new Error('Blocked'); }, setItem() { throw new Error('Full'); } };
-assert.equal(saveDraft('interest', draft, blocked), false);
-assert.equal(loadDraft('interest', blocked), null);
-assert.doesNotThrow(() => clearDraft('interest', draft, blocked));
-saveDraft('interest', { ...draft, project: 'Newer draft in another tab' }, storage);
-clearDraft('interest', draft, storage);
-assert.equal(loadDraft('interest', storage).project, 'Newer draft in another tab', 'a previous successful request cannot erase newer answers');
+assert.equal(saveDraft('cy-test:interest', draft, blocked), false);
+assert.equal(loadDraft('cy-test:interest', blocked), null);
+assert.doesNotThrow(() => clearDraft('cy-test:interest', draft, blocked));
+saveDraft('cy-test:interest', { ...draft, project: 'Newer draft in another tab' }, storage);
+clearDraft('cy-test:interest', draft, storage);
+assert.equal(loadDraft('cy-test:interest', storage).project, 'Newer draft in another tab', 'a previous successful request cannot erase newer answers');
 saveDraft('coffee', { name: 'Someone Else', availability: 'Tuesdays' }, storage);
 assert.equal(loadDraft('coffee', storage).availability, 'Tuesdays', 'each form keeps its own draft');
-assert.equal(loadDraft('interest', storage).project, 'Newer draft in another tab');
+assert.equal(loadDraft('cy-test:interest', storage).project, 'Newer draft in another tab');
 entries.clear();
 entries.clear();
 
@@ -153,7 +158,7 @@ try {
   // The interest form, mounted alone the way the page mounts it.
   const site = SAMPLE_SITE;
   const Form = walk(twoOpen, (node) => node.type?.name === 'SectionForm').type;
-  const render = (props = { section: site.sections[0], cycle: null }) => {
+  const render = (props = { section: site.sections[0], cycleId: 'cy-test' }) => {
     cursor = 0; effects = [];
     const tree = Form(props);
     effects.forEach((effect) => effect());
@@ -170,7 +175,7 @@ try {
     await new Promise((resolve) => setImmediate(resolve));
     return render(props);
   };
-  saveDraft('interest', draft, storage);
+  saveDraft('cy-test:interest', draft, storage);
   automaticRequests = 0;
   globalThis.fetch = async () => { automaticRequests++; throw new Error('Unexpected automatic submission'); };
   resetMount();
@@ -185,7 +190,7 @@ try {
   assert.equal(globalThis.lastRequest.url, 'https://wiki.cornellphysicalintelligence.com/api/recruit/site/interest', 'every form posts to its own recruit route');
   assert.equal(globalThis.lastRequest.body.answers.year, 'Freshman');
   assert.deepEqual(globalThis.lastRequest.body.files, {}, 'no file attached, no file sent');
-  assert.equal(loadDraft('interest', storage).project, draft.project, 'failed attempts keep the durable draft');
+  assert.equal(loadDraft('cy-test:interest', storage).project, draft.project, 'failed attempts keep the durable draft');
   assert.ok(text(tree, 'You can also email cuphysint@cornell.edu'), 'the existing email fallback remains');
   resetMount();
   assert.equal(byId(render(), 'apply-interest-name').props.value, draft.name, 'failed answers survive another reload');
@@ -197,18 +202,18 @@ try {
   ]) {
     tree = await submit(response);
     assert.ok(!tree.props.className.includes('ifz--done'));
-    assert.equal(loadDraft('interest', storage).email, draft.email);
+    assert.equal(loadDraft('cy-test:interest', storage).email, draft.email);
   }
   tree = await submit({ status: 409, ok: false, json: async () => ({ exists: true, submitted: 1 }) });
   assert.ok(walk(tree, (node) => node.props?.role === 'alertdialog'), 'duplicates still ask before replacing');
-  assert.ok(loadDraft('interest', storage), 'duplicate responses retain answers');
+  assert.ok(loadDraft('cy-test:interest', storage), 'duplicate responses retain answers');
   resetMount();
   tree = await submit({ status: 409, ok: false, json: async () => ({ exists: true, replaceable: false, error: 'You already sent this form with this email.' }) });
   assert.ok(!walk(tree, (node) => node.props?.role === 'alertdialog'), 'a form that never replaces does not offer to');
   assert.ok(text(tree, 'You already sent this form with this email.'), 'it says so instead');
 
   for (const status of [200, 202]) {
-    saveDraft('interest', draft, storage);
+    saveDraft('cy-test:interest', draft, storage);
     resetMount();
     tree = await submit({ status, ok: true, json: async () => ({ ok: true, ...(status === 202 ? { queued: true } : {}) }) });
     assert.ok(tree.props.className.includes('ifz--done'), 'normal success and a confirmed durable receipt keep the success animation');
@@ -219,14 +224,14 @@ try {
 
   // With a receiving cycle, every form posts to its own route with answers
   // keyed by question; a required choice left blank never leaves the page.
-  const withCycle = { section: site.sections[0], cycle: { id: 'cy-1', name: 'Fall 2026' } };
-  saveDraft('interest', { ...draft, year: '' }, storage);
+  const withCycle = { section: site.sections[0], cycleId: 'cy-test' };
+  saveDraft('cy-test:interest', { ...draft, year: '' }, storage);
   resetMount();
   globalThis.lastRequest = null;
   tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, withCycle);
   assert.equal(globalThis.lastRequest, null, 'a missing required year is caught before any request');
-  assert.ok(text(tree, 'Choose your year first.'));
-  saveDraft('interest', draft, storage);
+  assert.ok(text(tree, 'Choose an option for Year.'));
+  saveDraft('cy-test:interest', draft, storage);
   resetMount();
   tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, withCycle);
   assert.equal(globalThis.lastRequest.url, 'https://wiki.cornellphysicalintelligence.com/api/recruit/site/interest');

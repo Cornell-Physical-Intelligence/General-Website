@@ -5,9 +5,9 @@ re-litigated; they are settled.
 
 ## Do not rewrite finished pages
 
-- **Apply page**: `APPLY_ACTIVE` in `src/pages/Apply.jsx` picks
-  `ApplyOpen.jsx` (recruiting season) or `ApplyClosed.jsx` (crab + closed
-  note, off season). `ApplyOpen.jsx` draws whatever forms the wiki has open
+- **Apply page**: `src/pages/Apply.jsx` loads `ApplyOpen.jsx`, which uses the
+  wiki feed to show an open form or `ApplyClosed.jsx` (crab + closed note).
+  `ApplyOpen.jsx` draws whatever forms the wiki has open
   from `GET /api/recruit/site`; which forms exist, their questions, and their
   wording are edited in the wiki, never hardcoded here. Do not restyle or
   "improve" either page unprompted. The README section "Apply page: what it

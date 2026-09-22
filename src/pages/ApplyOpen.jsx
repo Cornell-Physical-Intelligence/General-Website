@@ -1,11 +1,10 @@
 // The RECRUITING-SEASON Apply page. The wiki decides what is on it: GET
-// /api/recruit/site names the cycle receiving the website and its three forms
-// (interest, coffee chats, application), each with an open flag and a
+// /api/recruit/site names the cycle receiving the website and its forms,
+// each with an open flag and a
 // question list edited in the wiki's Applications settings. This page draws
 // whatever is open from those lists, so the team changes a form there and the
 // site follows on the next load. When nothing is open it renders ApplyClosed.
-// The live variant is chosen by APPLY_ACTIVE in Apply.jsx (see README,
-// "Apply page: what it shows").
+// Availability comes from the wiki’s receiving cycle.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import SiteFooter from '../components/SiteFooter';
 import ApplyClosed from './ApplyClosed';
@@ -17,50 +16,19 @@ import './Apply.css';
 // already runs, nothing third-party. Locally, `npm run dev` in the wiki repo
 // serves the same API on 4870.
 const API = import.meta.env.DEV
-  ? 'http://127.0.0.1:4870'
+  ? (import.meta.env.VITE_RECRUIT_API || 'http://127.0.0.1:4870')
   : 'https://wiki.cornellphysicalintelligence.com';
 
 const CONTACT_EMAIL = 'cuphysint@cornell.edu';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-// Button, confirmation, and closing note for the three forms a cycle starts
-// with, used while they still carry their default titles; any other form,
-// or a retitled one, gets the plain wording built from its title.
-const DEFAULT_TITLES = { interest: ['interest form', 'interest list'], coffee: ['coffee chats', 'coffee chat'], application: ['application form', 'application', 'applications'] };
-const WORDING = {
-  interest: {
-    submit: 'Join the interest list',
-    done: "You're on the list",
-    note: 'We read every one of these. Keep an eye on your inbox when recruiting opens.',
-    dupe: 'You already joined the interest list with this email',
-  },
-  coffee: {
-    submit: 'Request a coffee chat',
-    done: 'Request sent',
-    note: 'A member will email you to find a time.',
-    dupe: 'You already requested a coffee chat with this email',
-  },
-  application: {
-    submit: 'Send application',
-    done: 'Application sent',
-    note: "Thanks for applying. We'll be in touch by email.",
-    dupe: 'You already applied with this email',
-  },
-};
-const wordingFor = (section) => {
-  const title = String(section?.title || '').trim();
-  const stock = WORDING[section?.key];
-  const base = stock && (DEFAULT_TITLES[section.key] || []).includes(title.toLowerCase())
-    ? stock
-    : { submit: 'Send', done: 'Sent', note: 'Thanks. We read every one of these.', dupe: `You already sent the ${title || 'form'} with this email` };
-  // What they read after sending is the form's own line from the wiki.
-  const thanks = String(section?.thanks || '').trim();
-  return thanks ? { ...base, note: thanks } : base;
-};
-
-// The top row of a choice question. Subteam keeps the site's old "Not sure
-// yet"; every other choice says what it is waiting for.
-const placeholderFor = (q) => (q.key === 'subteam' && !q.required ? 'Not sure yet' : q.key === 'year' ? 'Select your year' : 'Select one');
+// Wording and questions come from the selected cycle's form.
+const wordingFor = (section) => ({
+  submit: section.submitLabel || 'Send', done: section.successLabel || 'Sent',
+  note: section.thanks || 'Thanks. We read every one of these.',
+  dupe: `You already sent the ${section.title || 'form'} with this email`,
+});
+const placeholderFor = (q) => q.help || 'Select one';
 
 const idFor = (section, q) => `apply-${section.key}-${q.key}`;
 
@@ -315,19 +283,14 @@ const readAsBase64 = (file) =>
     reader.readAsDataURL(file);
   });
 
-// The interest form's project question shares one box with its photo
-// question, as it always has; every other file question is its own box.
+// Combined text and attachments use the explicit longfile question type.
 const rowsOf = (questions) => {
   const rows = [];
   for (let i = 0; i < questions.length; i += 1) {
     const q = questions[i];
-    const next = questions[i + 1];
     // A long-text-plus-file question is one box on its own.
     if (q.type === 'longfile') { rows.push({ q, file: q }); continue; }
-    if (q.key === 'project' && q.type === 'long' && next?.key === 'file' && next.type === 'file') {
-      rows.push({ q, file: next });
-      i += 1;
-    } else rows.push({ q });
+    rows.push({ q });
   }
   return rows;
 };
@@ -349,10 +312,11 @@ const initialState = (section, draft) => {
   return { values, cues };
 };
 
-function SectionForm({ section }) {
+function SectionForm({ section, cycleId }) {
+  const draftKey = `${cycleId}:${section.key}`;
   const questions = section.form.questions;
   const wording = wordingFor(section);
-  const [start] = useState(() => initialState(section, loadDraft(section.key)));
+  const [start] = useState(() => initialState(section, loadDraft(draftKey)));
   const [values, setValues] = useState(start.values);
   const [files, setFiles] = useState({});
   // Names of files a restored draft had attached, until they are attached again.
@@ -382,8 +346,8 @@ function SectionForm({ section }) {
       const name = files[q.key]?.name || cues[q.key];
       if (name) out[`F_${q.key}`] = name;
     }
-    saveDraft(section.key, out);
-  }, [values, files, cues, status, section.key, questions]);
+    saveDraft(draftKey, out);
+  }, [values, files, cues, status, draftKey, questions]);
 
   const setValue = (key, v) => setValues((prev) => ({ ...prev, [key]: v }));
   const setFile = (key, f) => {
@@ -393,6 +357,7 @@ function SectionForm({ section }) {
 
   // The same checks the wiki makes, so a miss is caught before the upload.
   const problem = () => {
+    if (Object.values(files).reduce((n, f) => n + (f?.size || 0), 0) > MAX_FILE_BYTES) return ['Attachments together are capped at 2.5 MB.', null];
     for (const q of questions) {
       const v = values[q.key];
       const id = idFor(section, q);
@@ -412,7 +377,7 @@ function SectionForm({ section }) {
         if ((q.required || clean) && !EMAIL_RE.test(clean)) return [q.key === 'email' ? 'That email does not look right.' : `${label} does not look like an email.`, at()];
         continue;
       }
-      if (q.type === 'single' && q.required && !v) return [q.key === 'year' ? 'Choose your year first.' : `Choose an option for ${label}.`, at('-label-control')];
+      if (q.type === 'single' && q.required && !v) return [`Choose an option for ${label}.`, at('-label-control')];
       if (q.type === 'multi' && q.required && !v.length) return [`Choose at least one option for ${label}.`, at()];
       if (q.type === 'checkbox' && q.required && !v) return [`${label} must be checked.`, at()];
       if (q.type === 'link' && String(v).trim() && !/^https?:\/\/\S+$/i.test(String(v).trim())) return [`${label} must start with http:// or https://.`, at()];
@@ -431,7 +396,7 @@ function SectionForm({ section }) {
     setError('');
     setStatus('sending');
     const snapshot = draftOf();
-    saveDraft(section.key, snapshot);
+    saveDraft(draftKey, snapshot);
     try {
       const answers = {};
       for (const q of questions) {
@@ -461,7 +426,7 @@ function SectionForm({ section }) {
       }
       if (!res.ok) throw new Error(out.error || 'Something went wrong.');
       if (out.ok !== true) throw new Error('We could not confirm your submission. Please try again.');
-      clearDraft(section.key, snapshot);
+      clearDraft(draftKey, snapshot);
       setDuplicate(null);
       setStatus('done');
     } catch (problem) {
@@ -663,7 +628,8 @@ function FormPage({ formKey }) {
           {open && (
             <>
               <h1 className="apply-page__title">{section.title}</h1>
-              <SectionForm key={`${site.cycle?.id || 'none'}:${section.key}`} section={section} />
+              {section.full && <p className="apply-page__intro">This form is full.{section.replace !== false ? ' If you already submitted, use the same email to update your answers.' : ''}</p>}
+              <SectionForm key={`${site.cycle?.id || 'none'}:${section.key}`} section={section} cycleId={site.cycle?.id} />
             </>
           )}
         </div>
@@ -702,7 +668,8 @@ function ApplyLanding() {
           {active && (
             <>
               <h2 className="apply-page__title">{active.title}</h2>
-              <SectionForm key={`${site.cycle?.id || 'none'}:${active.key}`} section={active} />
+              {active.full && <p className="apply-page__intro">This form is full.{active.replace !== false ? ' If you already submitted, use the same email to update your answers.' : ''}</p>}
+              <SectionForm key={`${site.cycle?.id || 'none'}:${active.key}`} section={active} cycleId={site.cycle?.id} />
             </>
           )}
         </div>
