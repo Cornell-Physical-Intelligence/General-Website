@@ -60,6 +60,7 @@ const dir = await mkdtemp(join(tmpdir(), 'cupi-form-test-'));
 const previousWindow = globalThis.window;
 const previousFetch = globalThis.fetch;
 const previousDocument = globalThis.document;
+const previousFileReader = globalThis.FileReader;
 try {
   await mkdir(join(dir, 'src/pages'), { recursive: true });
   await mkdir(join(dir, 'src/data'), { recursive: true });
@@ -183,7 +184,15 @@ try {
   assert.equal(byId(tree, 'apply-interest-name').props.value, draft.name, 'a reload restores unsent answers');
   assert.equal(byId(tree, 'apply-interest-email').props.value, draft.email);
   assert.equal(automaticRequests, 0, 'restoring a draft never automatically submits it');
-  assert.ok(text(tree, 'Attach robot.pdf again'), 'restored files require reattachment');
+  assert.ok(text(tree, 'Not attached: robot.pdf'), 'restored files require reattachment');
+  globalThis.lastRequest = null;
+  tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) });
+  assert.equal(globalThis.lastRequest, null, 'a draft with a missing attachment cannot be silently submitted');
+  assert.ok(text(tree, 'Attach robot.pdf again or remove it before sending.'));
+  const missingBox = walk(tree, (node) => node.type?.name === 'FileBox');
+  const missingControl = missingBox.type(missingBox.props);
+  walk(missingControl, (node) => node.props?.['aria-label'] === 'Remove missing robot.pdf').props.onClick();
+  delete draft.F_file;
 
   tree = await submit({ status: 500, ok: false, json: async () => ({ error: 'Temporary outage' }) });
   assert.ok(!tree.props.className.includes('ifz--done'), 'HTTP failures cannot animate success');
@@ -238,11 +247,90 @@ try {
   assert.deepEqual(Object.keys(globalThis.lastRequest.body).sort(), ['answers', 'files', 'website']);
   assert.equal(globalThis.lastRequest.body.answers.project, draft.project);
   assert.ok(tree.props.className.includes('ifz--done'));
+  // Exercise the actual upload control and submit handler for both supported
+  // attachment question types, including a retry after a network failure.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
+  globalThis.FileReader = class {
+    readAsDataURL(file) {
+      this.result = `data:${file.type};base64,${file.bytes.toString('base64')}`;
+      queueMicrotask(() => this.onload());
+    }
+  };
+  for (const type of ['file', 'longfile']) {
+    const section = { key: 'image-test', title: 'Image test', open: true, form: { questions: [
+      { key: 'name', type: 'short', required: true }, { key: 'email', type: 'email', required: true },
+      { key: 'photo', type, label: 'Photo', required: true },
+    ] } };
+    const props = { section, cycleId: 'cy-test' };
+    saveDraft('cy-test:image-test', { name: 'Synthetic Image Test', email: 'image@example.test' }, storage);
+    resetMount();
+    tree = render(props);
+    const box = walk(tree, (node) => node.type?.name === 'FileBox');
+    const control = box.type(box.props);
+    const input = walk(control, (node) => node.type === 'input' && node.props.type === 'file');
+    input.props.onChange({ target: { files: [{ name: 'robot.png', type: 'image/png', size: png.length, bytes: png }], value: 'robot.png' } });
+    tree = await submit(new Error('Network offline'), props);
+    assert.ok(!tree.props.className.includes('ifz--done'));
+    assert.deepEqual(globalThis.lastRequest.body.files.photo, { name: 'robot.png', type: 'image/png', data: png.toString('base64') });
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'synthetic' }) }, props);
+    assert.deepEqual(globalThis.lastRequest.body.files.photo, { name: 'robot.png', type: 'image/png', data: png.toString('base64') }, 'retry retains the selected image');
+    assert.ok(tree.props.className.includes('ifz--done'));
+  }
+  console.log('PASS: PNG file selection, base64 request bytes, and network retry for file and longfile questions');
+  for (const rejected of [
+    { name: 'phone.heic', type: 'image/heic', size: 100 },
+    { name: 'large.png', type: 'image/png', size: 3 * 1024 * 1024 },
+    { name: 'empty.png', type: 'image/png', size: 0 },
+  ]) {
+    const section = { key: 'reject-test', title: 'Upload test', open: true, form: { questions: [
+      { key: 'name', type: 'short', required: true }, { key: 'email', type: 'email', required: true },
+      { key: 'photo', type: 'file', label: 'Photo', required: false },
+    ] } };
+    const props = { section, cycleId: 'cy-test' };
+    saveDraft('cy-test:reject-test', { name: 'Test', email: 'image@example.test' }, storage);
+    resetMount();
+    tree = render(props);
+    const box = walk(tree, (node) => node.type?.name === 'FileBox');
+    const input = walk(box.type(box.props), (node) => node.type === 'input' && node.props.type === 'file');
+    input.props.onChange({ target: { files: [rejected], value: rejected.name } });
+    globalThis.lastRequest = null;
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, props);
+    assert.equal(globalThis.lastRequest, null, 'a rejected optional image blocks the submission');
+    assert.ok(!tree.props.className.includes('ifz--done'));
+    resetMount();
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, props);
+    assert.equal(globalThis.lastRequest, null, 'a reload retains the unresolved attachment');
+    const restoredBox = walk(tree, (node) => node.type?.name === 'FileBox');
+    walk(restoredBox.type(restoredBox.props), (node) => node.props?.['aria-label'] === `Remove missing ${rejected.name}`).props.onClick();
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, props);
+    assert.deepEqual(globalThis.lastRequest.body.files, {}, 'explicit removal permits a submission without the optional file');
+    assert.ok(tree.props.className.includes('ifz--done'));
+  }
+  console.log('PASS: unsupported, oversized, empty, and restored missing files block submission until explicitly resolved');
+  for (const failure of ['empty', 'abort']) {
+    saveDraft('cy-test:interest', draft, storage);
+    resetMount();
+    tree = render();
+    walk(tree, (node) => node.type?.name === 'FileBox').props.onFile({ name: 'unreadable.png', type: 'image/png', size: png.length, bytes: png });
+    globalThis.FileReader = class {
+      readAsDataURL() {
+        queueMicrotask(() => { if (failure === 'abort') this.onabort(); else { this.result = 'data:image/png;base64,'; this.onload(); } });
+      }
+    };
+    globalThis.lastRequest = null;
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) });
+    assert.equal(globalThis.lastRequest, null, 'an unreadable image never sends a partial submission');
+    assert.ok(!tree.props.className.includes('ifz--done'));
+    assert.equal(loadDraft('cy-test:interest', storage).F_file, 'unreadable.png');
+  }
+  console.log('PASS: empty or interrupted file reads retain the draft and never send a partial submission');
   console.log('PASS: form reload/failure recovery, file reminder, draft expiry, per-form storage, duplicate confirmation, verified success receipt, wiki-driven page and routes.');
 } finally {
   globalThis.window = previousWindow;
   globalThis.fetch = previousFetch;
   globalThis.document = previousDocument;
+  if (previousFileReader === undefined) delete globalThis.FileReader;
+  else globalThis.FileReader = previousFileReader;
   delete globalThis.formHooks;
   delete globalThis.lastRequest;
   await rm(dir, { recursive: true, force: true });

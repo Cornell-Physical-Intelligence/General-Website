@@ -190,7 +190,7 @@ const fileRules = (q) => {
 // file onto it, or use the corner upload icon. A file question on its own is
 // the same box without the text. Every file is checked here before a byte is
 // uploaded.
-function FileBox({ id, textQuestion, text, onText, fileQuestion, file, onFile, onProblem }) {
+function FileBox({ id, textQuestion, text, onText, fileQuestion, file, missingName, onFile, onReject }) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef(null);
   const rules = fileRules(fileQuestion);
@@ -198,14 +198,17 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, onFile, o
   const accept = (candidate) => {
     if (!candidate) return;
     if (!rules.types.includes(candidate.type)) {
-      onProblem(`${rules.only} for ${textQuestion ? 'the file' : fileQuestion.label}.`);
+      onReject(candidate.name, `${candidate.name} wasn't attached. ${rules.only}. Choose another file or remove it before sending.`);
       return;
     }
     if (candidate.size > rules.maxBytes) {
-      onProblem(`Files are capped at ${rules.cap}.`);
+      onReject(candidate.name, `${candidate.name} wasn't attached. Files are capped at ${rules.cap}. Choose another file or remove it before sending.`);
       return;
     }
-    onProblem('');
+    if (!candidate.size) {
+      onReject(candidate.name, `${candidate.name} is empty. Choose another file or remove it before sending.`);
+      return;
+    }
     onFile(candidate);
   };
 
@@ -261,6 +264,12 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, onFile, o
           <small>up to {rules.cap}</small>
         </button>
       )}
+      {missingName && !file && (
+        <div className="ifz-file">
+          <span className="ifz-file__name">{missingName} (not attached)</span>
+          <button type="button" className="ifz-file__remove" aria-label={`Remove missing ${missingName}`} onClick={() => onFile(null)}>×</button>
+        </div>
+      )}
       <input
         ref={inputRef}
         type="file"
@@ -278,8 +287,13 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, onFile, o
 const readAsBase64 = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onload = () => {
+      const data = String(reader.result).split(',')[1];
+      if (!data) reject(new Error(`${file.name} could not be read. Attach it again.`));
+      else resolve(data);
+    };
     reader.onerror = () => reject(new Error('The file could not be read.'));
+    reader.onabort = () => reject(new Error('Reading the file was interrupted. Attach it again.'));
     reader.readAsDataURL(file);
   });
 
@@ -321,6 +335,7 @@ function SectionForm({ section, cycleId }) {
   const [files, setFiles] = useState({});
   // Names of files a restored draft had attached, until they are attached again.
   const [cues, setCues] = useState(start.cues);
+  const [fileErrors, setFileErrors] = useState({});
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   // Set when the server says this address already sent this form: holds the
@@ -353,6 +368,14 @@ function SectionForm({ section, cycleId }) {
   const setFile = (key, f) => {
     setFiles((prev) => ({ ...prev, [key]: f }));
     setCues((prev) => ({ ...prev, [key]: '' }));
+    setFileErrors((prev) => ({ ...prev, [key]: '' }));
+    setError('');
+  };
+  const rejectFile = (key, name, message) => {
+    setFiles((prev) => ({ ...prev, [key]: null }));
+    setCues((prev) => ({ ...prev, [key]: name }));
+    setFileErrors((prev) => ({ ...prev, [key]: message }));
+    setError(message);
   };
 
   // The same checks the wiki makes, so a miss is caught before the upload.
@@ -363,6 +386,8 @@ function SectionForm({ section, cycleId }) {
       const id = idFor(section, q);
       const label = q.label || q.key;
       const at = (suffix = '') => `${id}${suffix}`;
+      if (fileErrors[q.key]) return [fileErrors[q.key], at()];
+      if (cues[q.key] && !files[q.key]) return [`Attach ${cues[q.key]} again or remove it before sending.`, at()];
       if (q.type === 'file') {
         if (q.required && !files[q.key]) return [`Attach ${fileRules(q).kinds} for ${label}.`, at()];
         continue;
@@ -443,20 +468,20 @@ function SectionForm({ section, cycleId }) {
 
   const done = status === 'done';
   const missing = questions.filter((q) => (q.type === 'file' || q.type === 'longfile') && cues[q.key] && !files[q.key]).map((q) => cues[q.key]);
-  const attachmentReminder = missing.length ? `Your answers were restored. Attach ${missing.join(' and ')} again if you want to include it.` : '';
+  const attachmentReminder = missing.length ? `Not attached: ${missing.join(' and ')}. Choose the files again or remove them before sending.` : '';
 
   const control = ({ q, file }) => {
     const id = idFor(section, q);
     const v = values[q.key];
     if (q.type === 'file') {
-      return <FileBox id={id} fileQuestion={q} file={files[q.key] || null} onFile={(next) => setFile(q.key, next)} onProblem={setError} />;
+      return <FileBox id={id} fileQuestion={q} file={files[q.key] || null} missingName={cues[q.key]} onFile={(next) => setFile(q.key, next)} onReject={(name, message) => rejectFile(q.key, name, message)} />;
     }
     if (q.type === 'longfile') {
-      return <FileBox id={id} textQuestion={q} text={v} onText={(next) => setValue(q.key, next)} fileQuestion={q} file={files[q.key] || null} onFile={(next) => setFile(q.key, next)} onProblem={setError} />;
+      return <FileBox id={id} textQuestion={q} text={v} onText={(next) => setValue(q.key, next)} fileQuestion={q} file={files[q.key] || null} missingName={cues[q.key]} onFile={(next) => setFile(q.key, next)} onReject={(name, message) => rejectFile(q.key, name, message)} />;
     }
     if (q.type === 'long') {
       if (file) {
-        return <FileBox id={id} textQuestion={q} text={v} onText={(next) => setValue(q.key, next)} fileQuestion={file} file={files[file.key] || null} onFile={(next) => setFile(file.key, next)} onProblem={setError} />;
+        return <FileBox id={id} textQuestion={q} text={v} onText={(next) => setValue(q.key, next)} fileQuestion={file} file={files[file.key] || null} missingName={cues[file.key]} onFile={(next) => setFile(file.key, next)} onReject={(name, message) => rejectFile(file.key, name, message)} />;
       }
       return <textarea id={id} className="ifz-input ifz-textarea" value={v} onChange={(event) => setValue(q.key, event.target.value)} maxLength={q.max || 1000} placeholder={q.help || ''} required={q.required} />;
     }
@@ -543,7 +568,7 @@ function SectionForm({ section, cycleId }) {
             aria-hidden="true"
           />
           <p className={`ifz-error ${error || attachmentReminder ? 'is-visible' : ''}`} role="alert" aria-live="polite">
-            {[error, attachmentReminder].filter(Boolean).join(' ')}
+            {error || attachmentReminder}
           </p>
         </div>
       </div>
@@ -555,6 +580,7 @@ function SectionForm({ section, cycleId }) {
               ? ` on ${new Date(duplicate.submitted).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
               : ''}
             . Sending this replaces your earlier answers.
+            {' '}Earlier attachments are kept unless you upload a replacement for the same question.
           </p>
           <div className="ifz-dupe__actions">
             <button type="button" className="ifz-dupe__cancel" onClick={() => setDuplicate(null)}>
