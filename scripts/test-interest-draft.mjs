@@ -186,7 +186,7 @@ try {
   assert.equal(automaticRequests, 0, 'restoring a draft never automatically submits it');
   assert.ok(text(tree, 'Not attached: robot.pdf'), 'restored files require reattachment');
   globalThis.lastRequest = null;
-  tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) });
+  tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) });
   assert.equal(globalThis.lastRequest, null, 'a draft with a missing attachment cannot be silently submitted');
   assert.ok(text(tree, 'Attach robot.pdf again or remove it before sending.'));
   const missingBox = walk(tree, (node) => node.type?.name === 'FileBox');
@@ -206,6 +206,9 @@ try {
 
   for (const response of [
     new Error('Network offline'),
+    { status: 200, ok: true, json: async () => ({ ok: true }) },
+    { status: 200, ok: true, json: async () => ({ ok: true, receipt: 'invalid' }) },
+    { status: 409, ok: false, json: async () => ({ code: 'SUBMISSION_SUPERSEDED', error: 'A newer submission was saved.' }) },
     { status: 200, ok: true, json: async () => { throw new Error('HTML instead of JSON'); } },
     { status: 200, ok: true, json: async () => ({}) },
   ]) {
@@ -224,7 +227,7 @@ try {
   for (const status of [200, 202]) {
     saveDraft('cy-test:interest', draft, storage);
     resetMount();
-    tree = await submit({ status, ok: true, json: async () => ({ ok: true, ...(status === 202 ? { queued: true } : {}) }) });
+    tree = await submit({ status, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01', ...(status === 202 ? { queued: true } : {}) }) });
     assert.ok(tree.props.className.includes('ifz--done'), 'normal success and a confirmed durable receipt keep the success animation');
     assert.equal(storage.getItem(KEY), null, 'only confirmed success clears the submitted draft');
   }
@@ -237,12 +240,12 @@ try {
   saveDraft('cy-test:interest', { ...draft, year: '' }, storage);
   resetMount();
   globalThis.lastRequest = null;
-  tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, withCycle);
+  tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, withCycle);
   assert.equal(globalThis.lastRequest, null, 'a missing required year is caught before any request');
   assert.ok(text(tree, 'Choose an option for Year.'));
   saveDraft('cy-test:interest', draft, storage);
   resetMount();
-  tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, withCycle);
+  tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, withCycle);
   assert.equal(globalThis.lastRequest.url, 'https://wiki.cornellphysicalintelligence.com/api/recruit/site/interest');
   assert.deepEqual(Object.keys(globalThis.lastRequest.body).sort(), ['answers', 'files', 'website']);
   assert.equal(globalThis.lastRequest.body.answers.project, draft.project);
@@ -272,7 +275,7 @@ try {
     tree = await submit(new Error('Network offline'), props);
     assert.ok(!tree.props.className.includes('ifz--done'));
     assert.deepEqual(globalThis.lastRequest.body.files.photo, { name: 'robot.png', type: 'image/png', data: png.toString('base64') });
-    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'synthetic' }) }, props);
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, props);
     assert.deepEqual(globalThis.lastRequest.body.files.photo, { name: 'robot.png', type: 'image/png', data: png.toString('base64') }, 'retry retains the selected image');
     assert.ok(tree.props.className.includes('ifz--done'));
   }
@@ -294,15 +297,15 @@ try {
     const input = walk(box.type(box.props), (node) => node.type === 'input' && node.props.type === 'file');
     input.props.onChange({ target: { files: [rejected], value: rejected.name } });
     globalThis.lastRequest = null;
-    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, props);
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, props);
     assert.equal(globalThis.lastRequest, null, 'a rejected optional image blocks the submission');
     assert.ok(!tree.props.className.includes('ifz--done'));
     resetMount();
-    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, props);
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, props);
     assert.equal(globalThis.lastRequest, null, 'a reload retains the unresolved attachment');
     const restoredBox = walk(tree, (node) => node.type?.name === 'FileBox');
     walk(restoredBox.type(restoredBox.props), (node) => node.props?.['aria-label'] === `Remove missing ${rejected.name}`).props.onClick();
-    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) }, props);
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, props);
     assert.deepEqual(globalThis.lastRequest.body.files, {}, 'explicit removal permits a submission without the optional file');
     assert.ok(tree.props.className.includes('ifz--done'));
   }
@@ -318,12 +321,58 @@ try {
       }
     };
     globalThis.lastRequest = null;
-    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) });
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) });
     assert.equal(globalThis.lastRequest, null, 'an unreadable image never sends a partial submission');
     assert.ok(!tree.props.className.includes('ifz--done'));
     assert.equal(loadDraft('cy-test:interest', storage).F_file, 'unreadable.png');
   }
   console.log('PASS: empty or interrupted file reads retain the draft and never send a partial submission');
+  // A changed or removed question must not silently discard its pending upload.
+  for (const type of [null, 'short']) {
+    const section = structuredClone(site.sections[0]);
+    section.form.questions = section.form.questions.filter(q => q.key !== 'file');
+    if (type) section.form.questions.push({ key: 'file', type, label: 'Changed question' });
+    const props = { section, cycleId: 'cy-test' };
+    saveDraft('cy-test:interest', { ...draft, F_file: 'pending.png' }, storage);
+    resetMount();
+    tree = render(props);
+    assert.equal(loadDraft('cy-test:interest', storage).F_file, 'pending.png');
+    globalThis.lastRequest = null;
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, props);
+    assert.equal(globalThis.lastRequest, null);
+    assert.ok(!tree.props.className.includes('ifz--done'));
+    walk(tree, n => n.props?.['aria-label'] === 'Remove missing pending.png').props.onClick();
+    tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, props);
+    assert.ok(tree.props.className.includes('ifz--done'));
+  }
+  saveDraft('cy-test:interest', draft, storage);
+  resetMount();
+  tree = render();
+  const dropBox = walk(tree, n => n.type?.name === 'FileBox');
+  dropBox.type(dropBox.props).props.onDrop({ preventDefault() {}, dataTransfer: { files: [
+    {name: 'first.png', type: 'image/png', size: 68}, {name: 'second.png', type: 'image/png', size: 68},
+  ] } });
+  globalThis.lastRequest = null;
+  tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true }) });
+  assert.equal(globalThis.lastRequest, null, 'multiple dropped files never silently send only the first');
+  assert.match(loadDraft('cy-test:interest', storage).F_file, /first.png, second.png/);
+  // Two submits in the same render must issue only one request.
+  saveDraft('cy-test:interest', draft, storage);
+  resetMount();
+  tree = render();
+  let finish, calls = 0;
+  globalThis.fetch = () => { calls++; return new Promise(resolve => { finish = resolve; }); };
+  tree.props.onSubmit({ preventDefault() {} });
+  tree.props.onSubmit({ preventDefault() {} });
+  assert.equal(calls, 1);
+  assert.equal(walk(render(), n => n.props?.className === 'ifz-away').props.inert, true);
+  finish({ status: 503, ok: false, json: async () => ({ error: 'Temporary outage' }) });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(walk(render(), n => n.props?.className === 'ifz-away').props.inert, undefined);
+  tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) });
+  assert.ok(tree.props.className.includes('ifz--done'), 'the in-flight guard releases after failure');
+  console.log('PASS: changed forms retain pending attachments, multiple-file drops block, and concurrent submits cannot race');
+
   console.log('PASS: form reload/failure recovery, file reminder, draft expiry, per-form storage, duplicate confirmation, verified success receipt, wiki-driven page and routes.');
 } finally {
   globalThis.window = previousWindow;

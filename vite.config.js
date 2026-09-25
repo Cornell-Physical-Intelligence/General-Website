@@ -505,6 +505,7 @@ const emitRoutePages = () => {
 
   return {
     name: 'emit-route-pages',
+    apply: 'build',
 
     configResolved(config) {
       outDir = config.build.outDir

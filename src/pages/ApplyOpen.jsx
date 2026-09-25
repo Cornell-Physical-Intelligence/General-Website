@@ -195,7 +195,12 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, missingNa
   const inputRef = useRef(null);
   const rules = fileRules(fileQuestion);
 
-  const accept = (candidate) => {
+  const accept = (candidates) => {
+    if (candidates?.length > 1) {
+      onReject(Array.from(candidates, (f) => f.name).join(', '), 'Choose one file for this question. None of the dropped files were attached.');
+      return;
+    }
+    const candidate = candidates?.[0];
     if (!candidate) return;
     if (!rules.types.includes(candidate.type)) {
       onReject(candidate.name, `${candidate.name} wasn't attached. ${rules.only}. Choose another file or remove it before sending.`);
@@ -225,7 +230,7 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, missingNa
       onDrop={(event) => {
         event.preventDefault();
         setDragOver(false);
-        accept(event.dataTransfer?.files?.[0]);
+        accept(event.dataTransfer?.files);
       }}
     >
       {textQuestion ? (
@@ -276,7 +281,7 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, missingNa
         hidden
         accept={rules.types.join(',')}
         onChange={(event) => {
-          accept(event.target.files?.[0]);
+          accept(event.target.files);
           event.target.value = '';
         }}
       />
@@ -312,10 +317,9 @@ const rowsOf = (questions) => {
 // Answers to start from: the saved draft where it still fits the form.
 const initialState = (section, draft) => {
   const values = {};
-  const cues = {};
+  const cues = Object.fromEntries(Object.entries(draft || {}).filter(([key, name]) => /^F_[a-z][a-z0-9_-]{0,39}$/.test(key) && typeof name === 'string' && name).map(([key, name]) => [key.slice(2), name]));
   for (const q of section.form.questions) {
     const v = draft?.[q.key];
-    if ((q.type === 'file' || q.type === 'longfile') && typeof draft?.[`F_${q.key}`] === 'string') cues[q.key] = draft[`F_${q.key}`];
     if (q.type === 'file') {
       // nothing typed for a file question
     } else if (q.type === 'single') values[q.key] = typeof v === 'string' && (q.options || []).includes(v) ? v : '';
@@ -342,9 +346,13 @@ function SectionForm({ section, cycleId }) {
   // earlier date so the visitor can decide whether to replace it.
   const [duplicate, setDuplicate] = useState(null);
   const honeypotRef = useRef(null);
+  const inFlight = useRef(false);
+  const unavailableFiles = Object.entries(cues).filter(([key, name]) => name && !questions.some((q) => q.key === key && (q.type === 'file' || q.type === 'longfile')));
+  const unavailableId = `apply-${section.key}-unavailable-files`;
 
   const draftOf = () => {
     const out = { ...values };
+    for (const [key, name] of Object.entries(cues)) if (name) out[`F_${key}`] = name;
     for (const q of questions) {
       if (q.type !== 'file' && q.type !== 'longfile') continue;
       const name = files[q.key]?.name || cues[q.key];
@@ -356,6 +364,7 @@ function SectionForm({ section, cycleId }) {
   useEffect(() => {
     if (status === 'done') return;
     const out = { ...values };
+    for (const [key, name] of Object.entries(cues)) if (name) out[`F_${key}`] = name;
     for (const q of questions) {
       if (q.type !== 'file' && q.type !== 'longfile') continue;
       const name = files[q.key]?.name || cues[q.key];
@@ -380,6 +389,7 @@ function SectionForm({ section, cycleId }) {
 
   // The same checks the wiki makes, so a miss is caught before the upload.
   const problem = () => {
+    if (unavailableFiles.length) return ['The form changed and no longer accepts a pending attachment. Remove it below before sending, or email it to us.', unavailableId];
     if (Object.values(files).reduce((n, f) => n + (f?.size || 0), 0) > MAX_FILE_BYTES) return ['Attachments together are capped at 2.5 MB.', null];
     for (const q of questions) {
       const v = values[q.key];
@@ -412,12 +422,14 @@ function SectionForm({ section, cycleId }) {
   };
 
   const send = async (confirmUpdate) => {
+    if (inFlight.current || status === 'done') return;
     const miss = problem();
     if (miss) {
       setError(miss[0]);
       document.getElementById(miss[1])?.focus();
       return;
     }
+    inFlight.current = true;
     setError('');
     setStatus('sending');
     const snapshot = draftOf();
@@ -450,13 +462,15 @@ function SectionForm({ section, cycleId }) {
         return;
       }
       if (!res.ok) throw new Error(out.error || 'Something went wrong.');
-      if (out.ok !== true) throw new Error('We could not confirm your submission. Please try again.');
+      if (out.ok !== true || !/^jr-\d{13}-[a-f0-9]{24}$/.test(out.receipt || '')) throw new Error('We could not confirm your submission. Please try again.');
       clearDraft(draftKey, snapshot);
       setDuplicate(null);
       setStatus('done');
     } catch (problem) {
       setStatus('idle');
       setError(`${problem.message || 'Something went wrong.'} You can also email ${CONTACT_EMAIL}.`);
+    } finally {
+      inFlight.current = false;
     }
   };
 
@@ -538,7 +552,7 @@ function SectionForm({ section, cycleId }) {
   // above it slides away (the delays live in the CSS).
   return (
     <form className={`ifz ${done ? 'ifz--done' : ''}`} onSubmit={submit} noValidate>
-      <div className="ifz-away" inert={done || undefined} aria-hidden={done}>
+      <div className="ifz-away" inert={done || status === 'sending' || undefined} aria-hidden={done}>
         <div className="ifz-away__in">
           {section.description && <p className="apply-page__intro">{section.description}</p>}
           {rowsOf(questions).map((row) => {
@@ -557,6 +571,17 @@ function SectionForm({ section, cycleId }) {
               </div>
             );
           })}
+          {unavailableFiles.length > 0 && (
+            <div id={unavailableId} tabIndex={-1}>
+              <p className="ifz-help">The form no longer accepts these attachments. Remove them before sending, or email them to {CONTACT_EMAIL}.</p>
+              {unavailableFiles.map(([key, name]) => (
+                <div className="ifz-file" key={key}>
+                  <span className="ifz-file__name">{name} (not attached)</span>
+                  <button type="button" className="ifz-file__remove" aria-label={`Remove missing ${name}`} onClick={() => setFile(key, null)}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
           {/* Honeypot: humans never see it, autofill and bots do. */}
           <input
             ref={honeypotRef}
