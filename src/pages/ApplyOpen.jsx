@@ -26,7 +26,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const wordingFor = (section) => ({
   submit: section.submitLabel || 'Send', done: section.successLabel || 'Sent',
   note: section.thanks || 'Thanks. We read every one of these.',
-  dupe: `You already sent the ${section.title || 'form'} with this email`,
 });
 const placeholderFor = (q) => q.help || 'Select one';
 
@@ -342,9 +341,6 @@ function SectionForm({ section, cycleId }) {
   const [fileErrors, setFileErrors] = useState({});
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
-  // Set when the server says this address already sent this form: holds the
-  // earlier date so the visitor can decide whether to replace it.
-  const [duplicate, setDuplicate] = useState(null);
   const honeypotRef = useRef(null);
   const inFlight = useRef(false);
   const unavailableFiles = Object.entries(cues).filter(([key, name]) => name && !questions.some((q) => q.key === key && (q.type === 'file' || q.type === 'longfile')));
@@ -421,7 +417,7 @@ function SectionForm({ section, cycleId }) {
     return null;
   };
 
-  const send = async (confirmUpdate) => {
+  const send = async () => {
     if (inFlight.current || status === 'done') return;
     const miss = problem();
     if (miss) {
@@ -446,25 +442,15 @@ function SectionForm({ section, cycleId }) {
         if ((q.type === 'file' || q.type === 'longfile') && files[q.key]) attached[q.key] = { name: files[q.key].name, type: files[q.key].type, data: await readAsBase64(files[q.key]) };
       }
       const website = honeypotRef.current?.value || '';
-      const extra = confirmUpdate ? { confirmUpdate: true } : {};
       const res = await fetch(`${API}/api/recruit/site/${encodeURIComponent(section.key)}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ answers, files: attached, website, ...extra }),
+        body: JSON.stringify({ answers, files: attached, website }),
       });
       const out = await res.json().catch(() => ({}));
-      // Already sent: ask before overwriting what they sent before, unless
-      // the wiki says this form never replaces an earlier submission.
-      if (res.status === 409 && out.exists) {
-        setStatus('idle');
-        if (out.replaceable === false) { setError(out.error || 'You already sent this form with this email.'); return; }
-        setDuplicate({ submitted: out.submitted });
-        return;
-      }
       if (!res.ok) throw new Error(out.error || 'Something went wrong.');
       if (out.ok !== true || !/^jr-\d{13}-[a-f0-9]{24}$/.test(out.receipt || '')) throw new Error('We could not confirm your submission. Please try again.');
       clearDraft(draftKey, snapshot);
-      setDuplicate(null);
       setStatus('done');
     } catch (problem) {
       setStatus('idle');
@@ -477,7 +463,7 @@ function SectionForm({ section, cycleId }) {
   const submit = (event) => {
     event.preventDefault();
     if (status === 'sending') return;
-    send(false);
+    send();
   };
 
   const done = status === 'done';
@@ -597,27 +583,7 @@ function SectionForm({ section, cycleId }) {
           </p>
         </div>
       </div>
-      {duplicate && (
-        <div className="ifz-dupe" role="alertdialog" aria-label="Already sent">
-          <p className="ifz-dupe__text">
-            {wording.dupe}
-            {duplicate.submitted
-              ? ` on ${new Date(duplicate.submitted).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
-              : ''}
-            . Sending this replaces your earlier answers.
-            {' '}Earlier attachments are kept unless you upload a replacement for the same question.
-          </p>
-          <div className="ifz-dupe__actions">
-            <button type="button" className="ifz-dupe__cancel" onClick={() => setDuplicate(null)}>
-              Cancel
-            </button>
-            <button type="button" className="ifz-dupe__ok" onClick={() => send(true)} disabled={status === 'sending'}>
-              {status === 'sending' ? 'Replacing...' : 'OK, replace it'}
-            </button>
-          </div>
-        </div>
-      )}
-      <button className="ifz-submit" type="submit" disabled={status !== 'idle' || Boolean(duplicate)} aria-live="polite">
+      <button className="ifz-submit" type="submit" disabled={status !== 'idle'} aria-live="polite">
         {done ? (
           <>
             <svg className="ifz-check" viewBox="0 0 24 24" aria-hidden="true">
@@ -655,7 +621,7 @@ function useSite() {
   return site;
 }
 
-const isOpen = (s) => s?.open === true && Array.isArray(s.form?.questions) && s.form.questions.length > 0;
+const isOpen = (s) => s?.available === true && Array.isArray(s.form?.questions) && s.form.questions.length > 0;
 
 const UNREACHABLE_NOTE = `We could not load the form right now. Try again in a moment, or email ${CONTACT_EMAIL}.`;
 
@@ -673,13 +639,12 @@ function FormPage({ formKey }) {
           {site?.error && <p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p>}
           {site && !site.error && !open && (
             <p className="apply-page__intro">
-              This form is closed right now. <a className="apply-page__link" href="/apply/">See what is open</a>.
+              {section?.full ? 'This form is full.' : 'This form is closed right now.'} <a className="apply-page__link" href="/apply/">See what is open</a>.
             </p>
           )}
           {open && (
             <>
               <h1 className="apply-page__title">{section.title}</h1>
-              {section.full && <p className="apply-page__intro">This form is full.{section.replace !== false ? ' If you already submitted, use the same email to update your answers.' : ''}</p>}
               <SectionForm key={`${site.cycle?.id || 'none'}:${section.key}`} section={section} cycleId={site.cycle?.id} />
             </>
           )}
@@ -719,7 +684,6 @@ function ApplyLanding() {
           {active && (
             <>
               <h2 className="apply-page__title">{active.title}</h2>
-              {active.full && <p className="apply-page__intro">This form is full.{active.replace !== false ? ' If you already submitted, use the same email to update your answers.' : ''}</p>}
               <SectionForm key={`${site.cycle?.id || 'none'}:${active.key}`} section={active} cycleId={site.cycle?.id} />
             </>
           )}
