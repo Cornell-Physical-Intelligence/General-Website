@@ -132,7 +132,7 @@ try {
   const downPage = await pageWith(new Error('wiki unreachable'));
   assert.ok(!walk(downPage, (node) => node.type?.name === 'SectionForm'), 'an unreachable wiki shows no form that could not be sent');
   assert.ok(text(downPage, 'We could not load the form right now'), 'it says so and gives the email');
-  const open = (keys, landing = null) => ({ cycle: { id: 'cy-1', name: 'Fall 2026', term: 'Fall 2026', status: 'open' }, landing, sections: SAMPLE_SITE.sections.concat({ key: 'coffee', title: 'Coffee chats', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }).map((s) => ({ ...s, open: keys.includes(s.key) })) });
+  const open = (keys, landing = null) => ({ cycle: { id: 'cy-1', name: 'Fall 2026', term: 'Fall 2026', status: 'open' }, landing, sections: SAMPLE_SITE.sections.concat({ key: 'coffee', title: 'Coffee chats', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }).map((s) => ({ ...s, open: keys.includes(s.key), available: keys.includes(s.key) })) });
   const twoOpen = await pageWith(open(['interest', 'coffee']));
   assert.equal(walk(twoOpen, (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', 'with no choice, /apply shows the first open form');
   assert.equal(walk(await pageWith(open(['interest', 'coffee'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'coffee', '/apply shows the form the wiki marks for it');
@@ -141,11 +141,15 @@ try {
   // A form at its own address: the form alone, or a closed note.
   const mod = await import(pathToFileURL(join(dir, 'src/pages/ApplyOpen.js')));
   const drawCoffee = () => unwrap(mod.ApplyCoffee());
+  const expired = open(['coffee']); expired.sections.forEach((section) => { section.available = false; });
+  assert.ok(!walk(await pageWith(expired, drawCoffee), (node) => node.type?.name === 'SectionForm'), 'the server cutoff overrides a form open toggle');
+  const full = open(['coffee']); full.sections.forEach((section) => { section.available = false; section.full = true; });
+  assert.ok(!walk(await pageWith(full, drawCoffee), (node) => node.type?.name === 'SectionForm'), 'full forms cannot be submitted');
   const bareOpen = await pageWith(open(['coffee']), drawCoffee);
   assert.equal(walk(bareOpen, (n) => n.type?.name === 'SectionForm').props.section.key, 'coffee', 'the coffee page draws the coffee form');
   assert.ok(walk(bareOpen, (n) => n.props?.className === 'apply-page__title'), 'the bare page carries the form title');
   assert.ok(!walk(bareOpen, (n) => n.type?.name === 'SiteFooter'), 'a bare page has no footer');
-  const later = { ...open(['coffee']), sections: open(['coffee']).sections.concat({ key: 'coffee-2', title: 'Coffee chats, round 2', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }) };
+  const later = { ...open(['coffee']), sections: open(['coffee']).sections.concat({ key: 'coffee-2', title: 'Coffee chats, round 2', description: '', open: true, available: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }) };
   globalThis.window.location.search = '?form=coffee-2';
   const byQuery = await pageWith(later);
   assert.equal(walk(byQuery, (n) => n.type?.name === 'SectionForm')?.props.section.key, 'coffee-2', '/apply/?form=<key> draws a form added after the build, alone');
@@ -217,7 +221,7 @@ try {
     assert.equal(loadDraft('cy-test:interest', storage).email, draft.email);
   }
   tree = await submit({ status: 409, ok: false, json: async () => ({ exists: true, submitted: 1 }) });
-  assert.ok(walk(tree, (node) => node.props?.role === 'alertdialog'), 'duplicates still ask before replacing');
+  assert.ok(!walk(tree, (node) => node.props?.role === 'alertdialog'), 'even legacy duplicate responses never offer unverified replacement');
   assert.ok(loadDraft('cy-test:interest', storage), 'duplicate responses retain answers');
   resetMount();
   tree = await submit({ status: 409, ok: false, json: async () => ({ exists: true, replaceable: false, error: 'You already sent this form with this email.' }) });

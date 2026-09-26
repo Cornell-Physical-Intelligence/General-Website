@@ -454,7 +454,8 @@ function SectionForm({ section, cycleId }) {
       setStatus('done');
     } catch (problem) {
       setStatus('idle');
-      setError(`${problem.message || 'Something went wrong.'} You can also email ${CONTACT_EMAIL}.`);
+      const message = problem.message || 'Something went wrong.';
+      setError(message.includes(CONTACT_EMAIL) ? message : `${message} You can also email ${CONTACT_EMAIL}.`);
     } finally {
       inFlight.current = false;
     }
