@@ -5,6 +5,7 @@ import {
   SITE_ALTERNATE_NAMES,
   SITE_URL,
   canonicalUrlForPage,
+  robotsContentForPage,
 } from '../src/seo.js';
 
 const ORIGIN = (process.env.LIVE_SITE_ORIGIN ?? SITE_URL).replace(/\/$/, '');
@@ -103,6 +104,10 @@ for (const [page, seo] of INDEXABLE_PAGES) {
   assert(
     text.includes('name="robots" content="index, follow'),
     `${page} is missing its index, follow directive`,
+  );
+  assert(
+    text.includes(`<meta name="robots" content="${robotsContentForPage(page)}"`),
+    `${page} has the wrong live image-preview policy`,
   );
   assert(
     text.includes(`<link rel="canonical" href="${canonical}"`),

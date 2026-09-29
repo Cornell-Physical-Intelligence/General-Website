@@ -15,6 +15,7 @@ import {
   SITE_URL,
   canonicalUrlForPage,
   getPageSeo,
+  robotsContentForPage,
   socialImageForPage,
   structuredDataForPage,
 } from './src/seoBuild.js'
@@ -287,9 +288,7 @@ const escapeHtml = (value) =>
 const seoHead = (page) => {
   const seo = getPageSeo(page)
   const url = canonicalUrlForPage(page)
-  const robots = seo.noindex
-    ? 'noindex, follow'
-    : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+  const robots = robotsContentForPage(page)
   const structuredData = structuredDataForPage(page)
   const jsonLd = structuredData
     ? `\n    <script id="seo-structured-data" type="application/ld+json">${JSON.stringify(

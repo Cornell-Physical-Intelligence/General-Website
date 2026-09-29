@@ -33,6 +33,8 @@ export const PAGE_SEO = {
     description:
       'CUPI Cornell is Cornell Physical Intelligence, a Cornell University student robotics organization building systems for manipulation, autonomous perception, and navigation.',
     lastModified: HOME_LAST_MODIFIED,
+    // User-requested opt-out of Google's content thumbnail, not the site favicon.
+    maxImagePreview: 'none',
   },
   work: {
     path: '/work/',
@@ -245,6 +247,13 @@ export const getPageSeo = (page) => PAGE_SEO[page] ?? PAGE_SEO.home;
 
 export const canonicalUrlForPage = (page) => `${SITE_URL}${getPageSeo(page).path}`;
 
+export const robotsContentForPage = (page) => {
+  const seo = getPageSeo(page);
+  return seo.noindex
+    ? 'noindex, follow'
+    : `index, follow, max-image-preview:${seo.maxImagePreview ?? 'large'}, max-snippet:-1, max-video-preview:-1`;
+};
+
 export const socialImageForPage = (page) => {
   const seo = getPageSeo(page);
   return seo.image
@@ -425,6 +434,7 @@ export const applyPageSeo = (page) => {
   };
 
   document.title = seo.title;
+  setContent('meta[name="robots"]', robotsContentForPage(page));
   setContent('meta[name="description"]', seo.description);
   setContent('meta[property="og:title"]', seo.title);
   setContent('meta[property="og:description"]', seo.description);

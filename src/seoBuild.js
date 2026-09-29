@@ -230,6 +230,7 @@ export {
   SITE_RELEASE_DATE,
   SITE_URL,
   canonicalUrlForPage,
+  robotsContentForPage,
   socialImageForPage,
   structuredDataForPage,
 } from './seo.js';

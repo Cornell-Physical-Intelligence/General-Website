@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp from 'sharp';
+import { applyPageSeo } from '../src/seo.js';
 import {
   ORGANIZATION_DESCRIPTION,
   ORGANIZATION_SAME_AS,
@@ -8,6 +9,7 @@ import {
   SITE_ALTERNATE_NAMES,
   SITE_URL,
   canonicalUrlForPage,
+  robotsContentForPage,
 } from '../src/seoBuild.js';
 
 const INDEXABLE_PAGES = Object.entries(PAGE_SEO).filter(([, seo]) => !seo.noindex);
@@ -31,6 +33,34 @@ const capture = (html, pattern, label) => {
 };
 
 const count = (html, pattern) => (html.match(pattern) ?? []).length;
+
+// Client-side navigation must not carry the homepage opt-out onto report pages,
+// or accidentally make a 404 indexable. Keep this in the normal CI check gate.
+const originalDocument = globalThis.document;
+try {
+  let currentRobots;
+  globalThis.document = {
+    title: '',
+    querySelector(selector) {
+      if (selector === '#seo-structured-data') return { textContent: '', remove() {} };
+      return {
+        setAttribute(_attribute, value) {
+          if (selector === 'meta[name="robots"]') currentRobots = value;
+        },
+      };
+    },
+  };
+  for (const page of ['home', 'work', 'vq1Report', 'home', 'notFound', 'sponsors', 'home']) {
+    applyPageSeo(page);
+    const expected = page === 'notFound'
+      ? 'noindex, follow'
+      : `index, follow, max-image-preview:${page === 'home' ? 'none' : 'large'}, max-snippet:-1, max-video-preview:-1`;
+    assert(currentRobots === expected, `${page} client navigation has the wrong robots policy`);
+  }
+} finally {
+  if (originalDocument === undefined) delete globalThis.document;
+  else globalThis.document = originalDocument;
+}
 
 const escapeHtml = (value) =>
   String(value)
@@ -255,6 +285,13 @@ for (const [page, seo] of INDEXABLE_PAGES) {
     `${page} static fallback intro does not match the SEO map`,
   );
   assert(html.includes('name="robots" content="index, follow'), `${page} is not indexable`);
+  const expectedImagePreview = page === 'home' ? 'none' : 'large';
+  assert(
+    robotsContentForPage(page) ===
+      `index, follow, max-image-preview:${expectedImagePreview}, max-snippet:-1, max-video-preview:-1` &&
+      html.includes(`<meta name="robots" content="${robotsContentForPage(page)}"`),
+    `${page} must preserve indexing and the route-specific image-preview policy`,
+  );
   assert(html.includes('href="/work/"'), `${page} is missing crawlable primary links`);
   assert(
     html.includes(
