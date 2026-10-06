@@ -25,9 +25,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // A dropped connection or a busy moment gets more tries before the visitor
 // sees a failure: the form's feed twice more, a submission twice more. A
-// submission that hears nothing for a minute counts as dropped.
+// submission that hears nothing for a minute (plus its upload time on a slow
+// phone) counts as dropped, and so does a feed load after 15 seconds.
 const RETRY_MS = [1500, 4000];
 const SEND_TIMEOUT_MS = 60000;
+const FEED_TIMEOUT_MS = 15000;
+const UPLOAD_BYTES_PER_MS = 16;
 const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RECEIPT_RE = /^jr-\d{13}-[a-f0-9]{24}$/;
@@ -354,7 +357,7 @@ const mailtoFor = (section, values, files) => {
   return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`${section.title}: ${String(values.name || '').trim()}`)}&body=${encodeURIComponent(lines.join('\n'))}`;
 };
 
-function SectionForm({ section, cycleId }) {
+function SectionForm({ section, cycleId, onBusy }) {
   const draftKey = `${cycleId}:${section.key}`;
   const questions = section.form.questions;
   const wording = wordingFor(section);
@@ -366,7 +369,7 @@ function SectionForm({ section, cycleId }) {
   const [fileErrors, setFileErrors] = useState({});
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
-  const [mailto, setMailto] = useState('');
+  const [sendFailed, setSendFailed] = useState(false);
   const honeypotRef = useRef(null);
   const inFlight = useRef(false);
   const unavailableFiles = Object.entries(cues).filter(([key, name]) => name && !questions.some((q) => q.key === key && (q.type === 'file' || q.type === 'longfile')));
@@ -453,7 +456,9 @@ function SectionForm({ section, cycleId }) {
     }
     inFlight.current = true;
     setError('');
+    setSendFailed(false);
     setStatus('sending');
+    onBusy?.(true);
     const snapshot = draftOf();
     saveDraft(draftKey, snapshot);
     try {
@@ -469,13 +474,17 @@ function SectionForm({ section, cycleId }) {
       }
       const website = honeypotRef.current?.value || '';
       const payload = JSON.stringify({ answers, files: attached, website });
-      // Retries reuse the same request. When an earlier try got no answer,
-      // "already sent with this email" means that try landed.
+      const limit = SEND_TIMEOUT_MS + Math.ceil(payload.length / UPLOAD_BYTES_PER_MS);
+      const startedAt = Date.now();
+      // Retries reuse the same request. A try that got no answer may still
+      // have landed: then the server's "already sent" for a submission made
+      // since this send began means it did. A 429 means nothing was taken.
       let unanswered = false;
       for (let attempt = 0; ; attempt += 1) {
-        let res, out;
+        let res;
+        let out = null;
         const controller = typeof AbortController === 'function' ? new AbortController() : null;
-        const timer = controller ? setTimeout(() => controller.abort(), SEND_TIMEOUT_MS) : null;
+        const timer = controller ? setTimeout(() => controller.abort(), limit) : null;
         try {
           res = await fetch(`${API}/api/recruit/site/${encodeURIComponent(section.key)}`, {
             method: 'POST',
@@ -483,29 +492,40 @@ function SectionForm({ section, cycleId }) {
             body: payload,
             ...(controller ? { signal: controller.signal } : {}),
           });
-          out = await res.json().catch(() => ({}));
+          out = await res.json().catch(() => null);
         } catch (dropped) {
           if (attempt < RETRY_MS.length) { unanswered = true; await wait(RETRY_MS[attempt]); continue; }
           throw new Error('The connection dropped before we could confirm your submission.', { cause: dropped });
         } finally {
           if (timer) clearTimeout(timer);
         }
-        if (RETRY_STATUS.has(res.status) && attempt < RETRY_MS.length) { unanswered = true; await wait(RETRY_MS[attempt]); continue; }
-        if (unanswered && res.status === 409 && out?.exists) break;
-        if (!res.ok) throw new Error(out.error || 'Something went wrong.');
-        if (out.ok !== true || !RECEIPT_RE.test(out.receipt || '')) throw new Error('We could not confirm your submission. Please try again.');
+        if ((RETRY_STATUS.has(res.status) || (res.ok && !out)) && attempt < RETRY_MS.length) {
+          if (res.status !== 429) unanswered = true;
+          await wait(RETRY_MS[attempt]);
+          continue;
+        }
+        if (unanswered && res.status === 409 && out?.exists) {
+          const serverNow = RECEIPT_RE.test(out.receipt || '') ? Number(out.receipt.slice(3, 16)) : NaN;
+          const age = serverNow - Number(out.submitted);
+          if (out.submitted != null && Number.isFinite(age) && age <= Date.now() - startedAt + 60000) break;
+        }
+        if (unanswered && (res.status === 409 || res.status === 404) && !out?.exists) {
+          throw new Error(`We could not confirm whether your earlier try went through. Email ${CONTACT_EMAIL} with your name and we will check.`);
+        }
+        if (!res.ok) throw new Error(out?.error || 'Something went wrong.');
+        if (out?.ok !== true || !RECEIPT_RE.test(out.receipt || '')) throw new Error('We could not confirm your submission. Please try again.');
         break;
       }
       clearDraft(draftKey, snapshot);
-      setMailto('');
       setStatus('done');
     } catch (problem) {
       setStatus('idle');
       const message = problem.message || 'Something went wrong.';
       setError(message.includes(CONTACT_EMAIL) ? message : `${message} You can also email ${CONTACT_EMAIL}.`);
-      setMailto(mailtoFor(section, values, files));
+      setSendFailed(true);
     } finally {
       inFlight.current = false;
+      onBusy?.(false);
     }
   };
 
@@ -630,7 +650,7 @@ function SectionForm({ section, cycleId }) {
           <p className={`ifz-error ${error || attachmentReminder ? 'is-visible' : ''}`} role="alert" aria-live="polite">
             {error || attachmentReminder}
           </p>
-          {error && mailto && <a className="ifz-mailto" href={mailto}>Email your answers instead</a>}
+          {error && sendFailed && <a className="ifz-mailto" href={mailtoFor(section, values, files)}>Email your answers instead</a>}
         </div>
       </div>
       <button className="ifz-submit" type="submit" disabled={status !== 'idle'} aria-live="polite">
@@ -662,8 +682,13 @@ function useSite() {
     const controller = new AbortController();
     const load = async () => {
       for (let attempt = 0; ; attempt += 1) {
+        // Each try has its own time limit and also stops when the page goes.
+        const tryController = new AbortController();
+        const stop = () => tryController.abort();
+        controller.signal.addEventListener('abort', stop);
+        const timer = setTimeout(stop, FEED_TIMEOUT_MS);
         try {
-          const res = await fetch(`${API}/api/recruit/site`, { cache: 'no-store', signal: controller.signal });
+          const res = await fetch(`${API}/api/recruit/site`, { cache: 'no-store', signal: tryController.signal });
           if (!res.ok) throw new Error(String(res.status));
           const out = await res.json();
           return Array.isArray(out?.sections) ? out : UNREACHABLE;
@@ -671,6 +696,9 @@ function useSite() {
           if (controller.signal.aborted) throw problem;
           if (attempt >= RETRY_MS.length) return UNREACHABLE;
           await wait(RETRY_MS[attempt]);
+        } finally {
+          clearTimeout(timer);
+          controller.signal.removeEventListener('abort', stop);
         }
       }
     };
@@ -679,6 +707,18 @@ function useSite() {
   }, []);
   return site;
 }
+
+// "Loading…" only when the wiki is slow to answer, never as a flash.
+function useSlow(waiting) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!waiting) return undefined;
+    const timer = setTimeout(() => setSlow(true), 2000);
+    return () => clearTimeout(timer);
+  }, [waiting]);
+  return waiting && slow;
+}
+const LOADING = <p className="apply-page__intro" role="status">Loading…</p>;
 
 const isOpen = (s) => s?.available === true && Array.isArray(s.form?.questions) && s.form.questions.length > 0;
 
@@ -689,6 +729,7 @@ const UNREACHABLE_NOTE = `We could not load the form right now. Try again in a m
 // the Apply page.
 function FormPage({ formKey }) {
   const site = useSite();
+  const slow = useSlow(!site);
   const section = (site?.sections || []).find((s) => s?.key === formKey) || null;
   const open = isOpen(section);
   return (
@@ -696,6 +737,7 @@ function FormPage({ formKey }) {
       <section className="alt-section alt-section--apply">
         <div className="apply-page">
           {site?.error && <><p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p><button type="button" className="apply-page__retry" onClick={() => window.location.reload()}>Try again</button></>}
+          {slow && LOADING}
           {site && !site.error && !open && (
             <p className="apply-page__intro">
               {section?.full ? 'This form is full.' : 'This form is closed right now.'} <a className="apply-page__link" href="/apply/">See what is open</a>.
@@ -756,7 +798,10 @@ const carryAnswers = (cycleId, from, to) => {
 
 function ApplyLanding() {
   const site = useSite();
+  const slow = useSlow(!site);
   const [picked, setPicked] = useState(readChoice);
+  // While a form is sending, the choice stays where it is.
+  const [busy, setBusy] = useState(false);
   const open = (site?.sections || []).filter(isOpen);
   const choices = (Array.isArray(site?.apply?.choices) ? site.apply.choices : [])
     .map((c) => ({ key: c?.key, label: c?.label, section: open.find((s) => s.key === c?.key) }))
@@ -770,6 +815,7 @@ function ApplyLanding() {
   const cycleId = site?.cycle?.id;
   // Picking the picked form again puts it away.
   const choose = (key) => {
+    if (busy) return;
     const next = key === active?.key ? '' : key;
     if (next) carryAnswers(cycleId, active, choices.find((c) => c.key === next).section);
     setPicked(next);
@@ -782,12 +828,13 @@ function ApplyLanding() {
       <section className={`alt-section alt-section--apply${choosing ? ' alt-section--choosing' : ''}`}>
         <div className="apply-page">
           {site?.error && <><p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p><button type="button" className="apply-page__retry" onClick={() => window.location.reload()}>Try again</button></>}
+          {slow && LOADING}
           {choosing && (
             <div className="apply-choose">
               {site.apply.question && <h2 className="apply-page__title" id="apply-choose-question">{site.apply.question}</h2>}
               <div className="apply-choose__list" role="group" aria-labelledby={site.apply.question ? 'apply-choose-question' : undefined} aria-label={site.apply.question ? undefined : 'Forms'}>
                 {choices.map((c) => (
-                  <button key={c.key} type="button" className="apply-choice" aria-pressed={c.key === active?.key} onClick={() => choose(c.key)}>
+                  <button key={c.key} type="button" className="apply-choice" aria-pressed={c.key === active?.key} aria-disabled={busy || undefined} onClick={() => choose(c.key)}>
                     {c.label || c.section.title}
                   </button>
                 ))}
@@ -797,7 +844,7 @@ function ApplyLanding() {
           {active && (
             <>
               {!choosing && <h2 className="apply-page__title">{active.title}</h2>}
-              <SectionForm key={`${cycleId || 'none'}:${active.key}`} section={active} cycleId={cycleId} />
+              <SectionForm key={`${cycleId || 'none'}:${active.key}`} section={active} cycleId={cycleId} onBusy={setBusy} />
             </>
           )}
         </div>

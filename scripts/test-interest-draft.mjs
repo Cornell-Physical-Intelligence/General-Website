@@ -84,7 +84,9 @@ try {
     .replace("from '../data/applyForms'", "from '../data/applyForms.js'")
     .replace('import.meta.env.DEV', 'false')
     .replace('const RETRY_MS = [1500, 4000];', 'const RETRY_MS = [0, 0];')
-    .replace('const SEND_TIMEOUT_MS = 60000;', 'const SEND_TIMEOUT_MS = 30;');
+    .replace('const SEND_TIMEOUT_MS = 60000;', 'const SEND_TIMEOUT_MS = 30;')
+    .replace('const FEED_TIMEOUT_MS = 15000;', 'const FEED_TIMEOUT_MS = 30;')
+    .replace('const UPLOAD_BYTES_PER_MS = 16;', 'const UPLOAD_BYTES_PER_MS = 1e9;');
   assert.ok(source.includes('const RETRY_MS = [0, 0];'), 'retries wait no time in tests');
   const compiled = await transformWithOxc(source, 'ApplyOpen.jsx', { jsx: { runtime: 'automatic' } });
   await writeFile(join(dir, 'src/pages/ApplyOpen.js'), compiled.code);
@@ -138,6 +140,18 @@ try {
   assert.ok(walk(downPage, (n) => n.props?.className === 'apply-page__retry'), 'and offers to try again');
   {
     let tries = 0;
+    const stalled = { cycle: { id: 'cy-1' }, landing: 'interest', sections: SAMPLE_SITE.sections.map((x) => ({ ...x, available: true })) };
+    const draw = () => unwrap(Apply());
+    globalThis.fetch = (url, init) => { tries += 1; return tries === 1 ? new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(new Error('aborted')))) : Promise.resolve({ ok: true, json: async () => stalled }); };
+    resetMount(); cursor = 0; effects = [];
+    draw(); effects.forEach((effect) => effect());
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    cursor = 0; effects = [];
+    assert.equal(walk(draw(), (n) => n.type?.name === 'SectionForm')?.props.section.key, 'interest', 'a stalled load is given up and tried again');
+    assert.equal(tries, 2);
+  }
+  {
+    let tries = 0;
     const flaky = { cycle: { id: 'cy-1' }, landing: 'interest', sections: SAMPLE_SITE.sections.map((x) => ({ ...x, available: true })) };
     const draw = () => unwrap(Apply());
     globalThis.fetch = async () => { tries += 1; if (tries < 3) throw new Error('dropped'); return { ok: true, json: async () => flaky }; };
@@ -179,6 +193,19 @@ try {
   assert.equal(walk(picked, (n) => n.type?.name === 'SectionForm').props.section.key, 'coffee', 'another pick swaps the form');
   assert.deepEqual(loadDraft('cy-1:coffee', storage), { name: 'Pat Example', email: 'pat@example.test' }, 'the same questions carry over; others and files stay behind');
   entries.clear();
+  {
+    const lockedPage = await pageWith(marked(['interest', 'coffee']));
+    radiosOf(lockedPage)[0].props.onClick();
+    let page = redraw();
+    walk(page, (n) => n.type?.name === 'SectionForm').props.onBusy(true);
+    page = redraw();
+    assert.equal(radiosOf(page)[1].props['aria-disabled'], true, 'while a form sends, the choice is locked');
+    radiosOf(page)[1].props.onClick();
+    page = redraw();
+    assert.equal(walk(page, (n) => n.type?.name === 'SectionForm').props.section.key, 'interest', 'and clicks do not switch forms');
+    walk(page, (n) => n.type?.name === 'SectionForm').props.onBusy(false);
+    entries.clear();
+  }
   const oneLeft = await pageWith(marked(['coffee']));
   assert.equal(radiosOf(oneLeft).length, 0, 'one marked form still open needs no choice');
   assert.equal(walk(oneLeft, (n) => n.type?.name === 'SectionForm').props.section.key, 'coffee');
@@ -425,8 +452,20 @@ try {
     let r = await sequence([{ status: 503, ok: false, json: async () => ({ error: 'Busy' }) }, ok]);
     assert.ok(r.tree.props.className.includes('ifz--done'), 'a busy server is tried again and the answer lands');
     assert.equal(r.calls, 2);
-    r = await sequence([new Error('Network offline'), { status: 409, ok: false, json: async () => ({ exists: true, replaceable: false, error: 'A submission already exists for this email.' }) }]);
-    assert.ok(r.tree.props.className.includes('ifz--done'), 'after a try that got no answer, "already sent" means it landed');
+    const exists = (submittedAgoMs) => ({ status: 409, ok: false, json: async () => ({ exists: true, replaceable: false, submitted: Date.now() - submittedAgoMs, receipt: `jr-${Date.now()}-abcdef0123456789abcdef01`, error: 'A submission already exists for this email. To correct it, email cuphysint@cornell.edu.' }) });
+    r = await sequence([new Error('Network offline'), exists(50)]);
+    assert.ok(r.tree.props.className.includes('ifz--done'), 'after a try that got no answer, "already sent" for a submission made just now means it landed');
+    r = await sequence([new Error('Network offline'), exists(3 * 86400000)]);
+    assert.ok(!r.tree.props.className.includes('ifz--done'), 'a submission from days ago is not this one: still an error');
+    assert.ok(text(r.tree, 'A submission already exists'));
+    assert.equal(loadDraft('cy-test:interest', storage).email, draft.email, 'and the corrected answers stay');
+    r = await sequence([{ status: 429, ok: false, json: async () => ({ error: 'Too many requests' }) }, exists(50)]);
+    assert.ok(!r.tree.props.className.includes('ifz--done'), 'a 429 took nothing, so a following "already sent" is an older one');
+    r = await sequence([new Error('Network offline'), { status: 409, ok: false, json: async () => ({ error: 'The deadline has passed. This cycle is closed.' }) }]);
+    assert.ok(text(r.tree, 'We could not confirm whether your earlier try went through'), 'a refusal after an unanswered try does not claim it failed');
+    r = await sequence([{ status: 200, ok: true, json: async () => { throw new Error('cut off'); } }, ok]);
+    assert.ok(r.tree.props.className.includes('ifz--done'), 'an unreadable answer is tried again');
+    assert.equal(r.calls, 2);
     r = await sequence([{ status: 409, ok: false, json: async () => ({ exists: true, replaceable: false, error: 'A submission already exists for this email.' }) }]);
     assert.ok(!r.tree.props.className.includes('ifz--done'), 'on a first try it is still an error');
     r = await sequence(['hang']);
