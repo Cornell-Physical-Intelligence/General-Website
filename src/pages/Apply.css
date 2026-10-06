@@ -420,6 +420,21 @@
   opacity: 1;
 }
 
+/* When sending keeps failing: the same answers as an email to the team. */
+.ifz-mailto,
+.apply-page__retry {
+  align-self: center;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--fg);
+  background: none;
+  border: none;
+  padding: 4px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 /* A hint of volume: top-lit gradient, an edge a step darker than the fill,
    and a faint inner highlight. All from the fg channel, so both themes hold. */
 .ifz-submit {
