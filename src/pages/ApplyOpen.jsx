@@ -1,9 +1,10 @@
 // The RECRUITING-SEASON Apply page. The wiki decides what is on it: GET
 // /api/recruit/site names the cycle receiving the website and its forms,
 // each with an open flag and a
-// question list edited in the wiki's Applications settings. This page draws
-// whatever is open from those lists, so the team changes a form there and the
-// site follows on the next load. When nothing is open it renders ApplyClosed.
+// question list edited in the wiki's Applications settings, and which of them
+// /apply shows (several at once are a choice). This page draws whatever is
+// open from those lists, so the team changes a form there and the site
+// follows on the next load. When nothing is open it renders ApplyClosed.
 // Availability comes from the wiki’s receiving cycle.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import SiteFooter from '../components/SiteFooter';
@@ -661,31 +662,85 @@ export function ApplyApplication() { return <FormPage formKey="application" />; 
 
 
 
-// /apply is where the QR code and the menu land: one form, the one the wiki
-// marks for it, else the first open one. The other open forms live at their
-// own addresses (/apply/coffee/ and so on).
+// /apply is where the QR code and the menu land: the forms the wiki marks
+// for it. One open form is the page; several open at once are a choice the
+// visitor makes first, under the wiki's question and labels. With none
+// marked, the first open form. Every form also lives at its own address
+// (/apply/coffee/ and so on).
 export default function ApplyOpen() {
   const asked = typeof window === 'undefined' ? '' : formKeyFromSearch(window.location.search);
   if (asked) return <FormPage formKey={asked} />;
   return <ApplyLanding />;
 }
 
+// The visitor's pick survives a reload in this tab.
+const CHOICE_KEY = 'cupi:apply-choice';
+const readChoice = () => {
+  try { return window.sessionStorage?.getItem(CHOICE_KEY) || ''; } catch { return ''; }
+};
+const writeChoice = (key) => {
+  try {
+    if (key) window.sessionStorage?.setItem(CHOICE_KEY, key);
+    else window.sessionStorage?.removeItem(CHOICE_KEY);
+  } catch { /* the pick still holds on this page */ }
+};
+
+// Answers to the same question (key, type and wording) follow the visitor to
+// another form they pick, unless that form has a draft of its own. Files
+// never move.
+const carryAnswers = (cycleId, from, to) => {
+  if (!from || loadDraft(`${cycleId}:${to.key}`)) return;
+  const draft = loadDraft(`${cycleId}:${from.key}`);
+  if (!draft) return;
+  const same = (q) => from.form.questions.some((p) => p.key === q.key && p.type === q.type && p.label === q.label);
+  const carried = Object.fromEntries(to.form.questions.filter((q) => q.type !== 'file' && q.type !== 'longfile' && same(q) && draft[q.key] !== undefined).map((q) => [q.key, draft[q.key]]));
+  if (Object.keys(carried).length) saveDraft(`${cycleId}:${to.key}`, carried);
+};
+
 function ApplyLanding() {
   const site = useSite();
+  const [picked, setPicked] = useState(readChoice);
   const open = (site?.sections || []).filter(isOpen);
-  const active = open.find((s) => s.key === site?.landing) || open[0];
-  if (site && !active && !site.error) return <ApplyClosed />;
+  const choices = (Array.isArray(site?.apply?.choices) ? site.apply.choices : [])
+    .map((c) => ({ key: c?.key, label: c?.label, section: open.find((s) => s.key === c?.key) }))
+    .filter((c) => c.section);
+  const choosing = choices.length > 1;
+  const active = choosing
+    ? choices.find((c) => c.key === picked)?.section || null
+    : choices[0]?.section || open.find((s) => s.key === site?.landing) || open[0];
+  if (site && !active && !choosing && !site.error) return <ApplyClosed />;
+
+  const cycleId = site?.cycle?.id;
+  // Picking the picked form again puts it away.
+  const choose = (key) => {
+    const next = key === active?.key ? '' : key;
+    if (next) carryAnswers(cycleId, active, choices.find((c) => c.key === next).section);
+    setPicked(next);
+    writeChoice(next);
+  };
 
   return (
     <main className="alt-page alt-page--apply">
       <h1 className="visually-hidden">Cornell Physical Intelligence Applications</h1>
-      <section className="alt-section alt-section--apply">
+      <section className={`alt-section alt-section--apply${choosing ? ' alt-section--choosing' : ''}`}>
         <div className="apply-page">
           {site?.error && <p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p>}
+          {choosing && (
+            <div className="apply-choose">
+              {site.apply.question && <h2 className="apply-page__title" id="apply-choose-question">{site.apply.question}</h2>}
+              <div className="apply-choose__list" role="group" aria-labelledby={site.apply.question ? 'apply-choose-question' : undefined} aria-label={site.apply.question ? undefined : 'Forms'}>
+                {choices.map((c) => (
+                  <button key={c.key} type="button" className="apply-choice" aria-pressed={c.key === active?.key} onClick={() => choose(c.key)}>
+                    {c.label || c.section.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {active && (
             <>
-              <h2 className="apply-page__title">{active.title}</h2>
-              <SectionForm key={`${site.cycle?.id || 'none'}:${active.key}`} section={active} cycleId={site.cycle?.id} />
+              {!choosing && <h2 className="apply-page__title">{active.title}</h2>}
+              <SectionForm key={`${cycleId || 'none'}:${active.key}`} section={active} cycleId={cycleId} />
             </>
           )}
         </div>

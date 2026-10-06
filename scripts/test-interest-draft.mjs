@@ -138,6 +138,34 @@ try {
   assert.equal(walk(await pageWith(open(['interest', 'coffee'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'coffee', '/apply shows the form the wiki marks for it');
   assert.equal(walk(await pageWith(open(['interest'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', 'a closed choice falls back to the first open form');
   assert.equal((await pageWith(open([]))).type, 'closed', 'nothing open shows the closed page');
+  // Several marked forms open at once: the visitor picks one first, by the wiki's labels.
+  const marked = (keys, question = 'Which subteam?') => ({ ...open(keys), apply: { question, choices: [{ key: 'interest', label: 'Join the list' }, { key: 'coffee', label: 'Coffee' }] } });
+  const radiosOf = (tree) => { const out = []; walk(tree, (n) => { if (n.props?.className === 'apply-choice') out.push(n); return false; }); return out; };
+  const redraw = () => { cursor = 0; effects = []; return unwrap(Apply()); };
+  const choosing = await pageWith(marked(['interest', 'coffee']));
+  assert.ok(!walk(choosing, (n) => n.type?.name === 'SectionForm'), 'no form until the visitor picks one');
+  assert.ok(text(choosing, 'Which subteam?'), "the wiki's question heads the choice");
+  assert.deepEqual(radiosOf(choosing).map((r) => r.props.children), ['Join the list', 'Coffee']);
+  assert.ok(text(choosing, 'Join the list'), 'each form under its label');
+  saveDraft('cy-1:interest', { name: 'Pat Example', email: 'pat@example.test', year: 'Junior', F_file: 'robot.pdf' }, storage);
+  radiosOf(choosing)[0].props.onClick();
+  let picked = redraw();
+  assert.equal(walk(picked, (n) => n.type?.name === 'SectionForm').props.section.key, 'interest', 'picking a form draws it');
+  assert.equal(radiosOf(picked)[0].props['aria-pressed'], true);
+  radiosOf(picked)[0].props.onClick();
+  picked = redraw();
+  assert.ok(!walk(picked, (n) => n.type?.name === 'SectionForm'), 'picking it again puts it away');
+  assert.ok(radiosOf(picked).every((b) => b.props['aria-pressed'] === false));
+  radiosOf(picked)[0].props.onClick();
+  picked = redraw();
+  radiosOf(picked)[1].props.onClick();
+  picked = redraw();
+  assert.equal(walk(picked, (n) => n.type?.name === 'SectionForm').props.section.key, 'coffee', 'another pick swaps the form');
+  assert.deepEqual(loadDraft('cy-1:coffee', storage), { name: 'Pat Example', email: 'pat@example.test' }, 'the same questions carry over; others and files stay behind');
+  entries.clear();
+  const oneLeft = await pageWith(marked(['coffee']));
+  assert.equal(radiosOf(oneLeft).length, 0, 'one marked form still open needs no choice');
+  assert.equal(walk(oneLeft, (n) => n.type?.name === 'SectionForm').props.section.key, 'coffee');
   // A form at its own address: the form alone, or a closed note.
   const mod = await import(pathToFileURL(join(dir, 'src/pages/ApplyOpen.js')));
   const drawCoffee = () => unwrap(mod.ApplyCoffee());
