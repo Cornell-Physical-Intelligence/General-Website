@@ -194,6 +194,14 @@ try {
   assert.deepEqual(loadDraft('cy-1:coffee', storage), { name: 'Pat Example', email: 'pat@example.test' }, 'the same questions carry over; others and files stay behind');
   entries.clear();
   {
+    saveDraft('cy-1:interest', { name: `${'n'.repeat(199)}😀tail`, email: 'pat@example.test' }, storage);
+    const page = await pageWith(marked(['interest', 'coffee']));
+    radiosOf(page)[0].props.onClick(); redraw();
+    radiosOf(redraw())[1].props.onClick(); redraw();
+    assert.equal(loadDraft('cy-1:coffee', storage).name, 'n'.repeat(199), 'a carried answer is cut to the other form\'s limit, never through an emoji');
+    entries.clear();
+  }
+  {
     const lockedPage = await pageWith(marked(['interest', 'coffee']));
     radiosOf(lockedPage)[0].props.onClick();
     let page = redraw();
@@ -322,7 +330,7 @@ try {
   resetMount();
   tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, withCycle);
   assert.equal(globalThis.lastRequest.url, 'https://wiki.cornellphysicalintelligence.com/api/recruit/site/interest');
-  assert.deepEqual(Object.keys(globalThis.lastRequest.body).sort(), ['answers', 'files', 'website']);
+  assert.deepEqual(Object.keys(globalThis.lastRequest.body).sort(), ['answers', 'files', 'hp_8c1f'], 'the spam trap has a name no autofill tool fills');
   assert.equal(globalThis.lastRequest.body.answers.project, draft.project);
   assert.ok(tree.props.className.includes('ifz--done'));
   // Exercise the actual upload control and submit handler for both supported

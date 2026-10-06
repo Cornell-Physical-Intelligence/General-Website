@@ -473,7 +473,7 @@ function SectionForm({ section, cycleId, onBusy }) {
         if ((q.type === 'file' || q.type === 'longfile') && files[q.key]) attached[q.key] = { name: files[q.key].name, type: files[q.key].type, data: await readAsBase64(files[q.key]) };
       }
       const website = honeypotRef.current?.value || '';
-      const payload = JSON.stringify({ answers, files: attached, website });
+      const payload = JSON.stringify({ answers, files: attached, hp_8c1f: website });
       const limit = SEND_TIMEOUT_MS + Math.ceil(payload.length / UPLOAD_BYTES_PER_MS);
       const startedAt = Date.now();
       // Retries reuse the same request. A try that got no answer may still
@@ -642,7 +642,7 @@ function SectionForm({ section, cycleId, onBusy }) {
             ref={honeypotRef}
             className="ifz-honeypot"
             type="text"
-            name="website"
+            name="hp_8c1f"
             tabIndex={-1}
             autoComplete="off"
             aria-hidden="true"
@@ -787,12 +787,21 @@ const writeChoice = (key) => {
 // Answers to the same question (key, type and wording) follow the visitor to
 // another form they pick, unless that form has a draft of its own. Files
 // never move.
+// Each question's length limit, as its input enforces it.
+const limitOf = (q) => q.max || (q.type === 'long' || q.type === 'longfile' ? 1000 : q.type === 'link' ? 500 : 200);
+const fit = (v, q) => {
+  if (typeof v !== 'string' || v.length <= limitOf(q)) return v;
+  const cut = v.slice(0, limitOf(q));
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
+};
 const carryAnswers = (cycleId, from, to) => {
   if (!from || loadDraft(`${cycleId}:${to.key}`)) return;
   const draft = loadDraft(`${cycleId}:${from.key}`);
   if (!draft) return;
   const same = (q) => from.form.questions.some((p) => p.key === q.key && p.type === q.type && p.label === q.label);
-  const carried = Object.fromEntries(to.form.questions.filter((q) => q.type !== 'file' && q.type !== 'longfile' && same(q) && draft[q.key] !== undefined).map((q) => [q.key, draft[q.key]]));
+  // An answer longer than the other form allows is cut to fit, so what the
+  // applicant sees there is exactly what will be sent.
+  const carried = Object.fromEntries(to.form.questions.filter((q) => q.type !== 'file' && q.type !== 'longfile' && same(q) && draft[q.key] !== undefined).map((q) => [q.key, fit(draft[q.key], q)]));
   if (Object.keys(carried).length) saveDraft(`${cycleId}:${to.key}`, carried);
 };
 
