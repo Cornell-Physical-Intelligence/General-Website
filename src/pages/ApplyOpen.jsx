@@ -22,6 +22,32 @@ const API = import.meta.env.DEV
 
 const CONTACT_EMAIL = 'cuphysint@cornell.edu';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+// A long answer's limit when the form sets none (the wiki's too).
+const LONG_MAX = 5000;
+// "linkedin.com/in/someone" is a link; it gets the https:// it left out,
+// exactly as the wiki does.
+const NO_LINK = /^(n\/?a|none|no|nope|-+|not yet|i don'?t have (one|any))\.?$/i;
+const linkOf = (v) => (v && !/^[a-z][a-z0-9+.-]*:/i.test(v) && /^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(v) ? `https://${v}` : v);
+// A domain one or two keystrokes from cornell.edu (cornell.esu, cornel.edu,
+// cornell.ed) or another cornell.* ending is a typo: the team's replies to it
+// would bounce. Returns the address it was meant to be, or ''.
+const CORNELL = 'cornell.edu';
+const typoDistance = (a, b) => {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j += 1) d[0][j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+};
+const cornellTypo = (email) => {
+  const [local, domain = ''] = String(email).trim().toLowerCase().split(/@(?=[^@]*$)/);
+  if (!local || !domain || domain === CORNELL) return '';
+  return domain.startsWith('cornell.') || typoDistance(domain, CORNELL) <= 2 ? `${local}@${CORNELL}` : '';
+};
 
 // A dropped connection or a busy moment gets more tries before the visitor
 // sees a failure: the form's feed twice more, a submission twice more. A
@@ -186,6 +212,16 @@ function ChoiceSelect({ value, onChange, options, labelId, required = false }) {
   );
 }
 
+// Near a long answer's limit, how much room is left: the box stops taking
+// text at the limit, and a paste past it would otherwise be cut silently.
+function LengthNote({ q, value }) {
+  if (q.type !== 'long' && q.type !== 'longfile') return null;
+  const max = limitOf(q);
+  const n = typeof value === 'string' ? value.length : 0;
+  if (n < max * 0.9) return null;
+  return <p className="ifz-help" aria-live="polite">{n >= max ? `${max.toLocaleString()} characters is the limit; anything past it was not kept.` : `${n.toLocaleString()} of ${max.toLocaleString()} characters`}</p>;
+}
+
 // What a file question accepts, in words and in types.
 const fileRules = (q) => {
   const types = Array.isArray(q.accept) && q.accept.length ? q.accept.filter((t) => FILE_TYPES.includes(t)) : FILE_TYPES;
@@ -214,12 +250,18 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, missingNa
     }
     const candidate = candidates?.[0];
     if (!candidate) return;
-    if (!rules.types.includes(candidate.type)) {
+    // Some files arrive with no type (a PDF saved without ".pdf" on some
+    // systems, some phones): the extension decides here, the bytes on the wiki.
+    const ext = String(candidate.name || '').toLowerCase().split('.').pop();
+    const type = candidate.type || { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' }[ext] || '';
+    const untyped = !candidate.type && !String(candidate.name || '').includes('.');
+    if (!rules.types.includes(type) && !untyped) {
       onReject(candidate.name, `${candidate.name} wasn't attached. ${rules.only}. Choose another file or remove it before sending.`);
       return;
     }
     if (candidate.size > rules.maxBytes) {
-      onReject(candidate.name, `${candidate.name} wasn't attached. Files are capped at ${rules.cap}. Choose another file or remove it before sending.`);
+      const mb = (candidate.size / (1024 * 1024)).toFixed(1);
+      onReject(candidate.name, `${candidate.name} is ${mb} MB and wasn't attached; files are capped at ${rules.cap}. Compress it and attach it again, or email your answers and the file to ${CONTACT_EMAIL}.`, { tooBig: true });
       return;
     }
     if (!candidate.size) {
@@ -251,7 +293,7 @@ function FileBox({ id, textQuestion, text, onText, fileQuestion, file, missingNa
           className="ifz-projectbox__text"
           value={text}
           onChange={(event) => onText(event.target.value)}
-          maxLength={textQuestion.max || 1000}
+          maxLength={textQuestion.max || LONG_MAX}
           placeholder={textQuestion.help || ''}
         />
       ) : null}
@@ -344,13 +386,13 @@ const initialState = (section, draft) => {
 
 // The answers as an email to the team, for when sending keeps failing. Files
 // cannot ride along in a mail link, so the body names them to attach.
-const mailtoFor = (section, values, files) => {
+const mailtoFor = (section, values, files, cues = {}) => {
   const lines = [section.title, ''];
   const attach = [];
   for (const q of section.form.questions) {
     const v = values[q.key];
     const text = Array.isArray(v) ? v.join(', ') : v === true ? 'Yes' : typeof v === 'string' ? v.trim() : '';
-    if (files[q.key]) attach.push(files[q.key].name);
+    if (files[q.key] || cues[q.key]) attach.push(files[q.key]?.name || cues[q.key]);
     if (text) lines.push(`${q.label || q.key}:`, text, '');
   }
   if (attach.length) lines.push(`Attach: ${attach.join(', ')}`);
@@ -367,11 +409,16 @@ function SectionForm({ section, cycleId, onBusy }) {
   // Names of files a restored draft had attached, until they are attached again.
   const [cues, setCues] = useState(start.cues);
   const [fileErrors, setFileErrors] = useState({});
+  // Files turned away for size: the email route is offered at once.
+  const [tooBig, setTooBig] = useState({});
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   const [sendFailed, setSendFailed] = useState(false);
   const honeypotRef = useRef(null);
   const inFlight = useRef(false);
+  // The address the Cornell-typo warning was last shown for: sending it
+  // again means the applicant meant it.
+  const typoSeen = useRef('');
   const unavailableFiles = Object.entries(cues).filter(([key, name]) => name && !questions.some((q) => q.key === key && (q.type === 'file' || q.type === 'longfile')));
   const unavailableId = `apply-${section.key}-unavailable-files`;
 
@@ -403,12 +450,14 @@ function SectionForm({ section, cycleId, onBusy }) {
     setFiles((prev) => ({ ...prev, [key]: f }));
     setCues((prev) => ({ ...prev, [key]: '' }));
     setFileErrors((prev) => ({ ...prev, [key]: '' }));
+    setTooBig((prev) => ({ ...prev, [key]: false }));
     setError('');
   };
-  const rejectFile = (key, name, message) => {
+  const rejectFile = (key, name, message, { tooBig: big = false } = {}) => {
     setFiles((prev) => ({ ...prev, [key]: null }));
     setCues((prev) => ({ ...prev, [key]: name }));
     setFileErrors((prev) => ({ ...prev, [key]: message }));
+    setTooBig((prev) => ({ ...prev, [key]: big }));
     setError(message);
   };
 
@@ -435,12 +484,19 @@ function SectionForm({ section, cycleId, onBusy }) {
       if (q.type === 'email') {
         const clean = String(v).trim();
         if ((q.required || clean) && !EMAIL_RE.test(clean)) return [q.key === 'email' ? 'That email does not look right.' : `${label} does not look like an email.`, at()];
+        const meant = cornellTypo(clean);
+        if (meant && typoSeen.current !== clean) {
+          typoSeen.current = clean;
+          return [`Check ${q.key === 'email' ? 'your email' : label}: did you mean ${meant}? To send it as typed, press ${wording.submit} again.`, at()];
+        }
         continue;
       }
       if (q.type === 'single' && q.required && !v) return [`Choose an option for ${label}.`, at('-label-control')];
       if (q.type === 'multi' && q.required && !v.length) return [`Choose at least one option for ${label}.`, at()];
       if (q.type === 'checkbox' && q.required && !v) return [`${label} must be checked.`, at()];
-      if (q.type === 'link' && String(v).trim() && !/^https?:\/\/\S+$/i.test(String(v).trim())) return [`${label} must start with http:// or https://.`, at()];
+      const link = q.type === 'link' ? linkOf(String(v).trim()) : '';
+      if (link && !NO_LINK.test(link) && /\s/.test(link)) return [`Give one link for ${label}.`, at()];
+      if (link && !NO_LINK.test(link) && !/^https?:\/\/\S+$/i.test(link)) return [`${label} must start with http:// or https:// (or write N/A).`, at()];
       if ((q.type === 'short' || q.type === 'long' || q.type === 'link') && q.required && !String(v).trim()) return [`${label} is required.`, at()];
     }
     return null;
@@ -466,14 +522,17 @@ function SectionForm({ section, cycleId, onBusy }) {
       for (const q of questions) {
         if (q.type === 'file') continue;
         const v = values[q.key];
-        answers[q.key] = typeof v === 'string' ? v.trim() : v;
+        answers[q.key] = q.type === 'link' ? linkOf(String(v).trim()) : typeof v === 'string' ? v.trim() : v;
       }
       const attached = {};
       for (const q of questions) {
         if ((q.type === 'file' || q.type === 'longfile') && files[q.key]) attached[q.key] = { name: files[q.key].name, type: files[q.key].type, data: await readAsBase64(files[q.key]) };
       }
       const website = honeypotRef.current?.value || '';
-      const payload = JSON.stringify({ answers, files: attached, hp_8c1f: website });
+      // Every question this page showed, file questions included: one the
+      // wiki added since cannot refuse the applicant.
+      const shown = questions.map((q) => q.key);
+      const payload = JSON.stringify({ answers, files: attached, shown, hp_8c1f: website });
       const limit = SEND_TIMEOUT_MS + Math.ceil(payload.length / UPLOAD_BYTES_PER_MS);
       const startedAt = Date.now();
       // Retries reuse the same request. A try that got no answer may still
@@ -543,16 +602,16 @@ function SectionForm({ section, cycleId, onBusy }) {
     const id = idFor(section, q);
     const v = values[q.key];
     if (q.type === 'file') {
-      return <FileBox id={id} fileQuestion={q} file={files[q.key] || null} missingName={cues[q.key]} onFile={(next) => setFile(q.key, next)} onReject={(name, message) => rejectFile(q.key, name, message)} />;
+      return <FileBox id={id} fileQuestion={q} file={files[q.key] || null} missingName={cues[q.key]} onFile={(next) => setFile(q.key, next)} onReject={(name, message, opts) => rejectFile(q.key, name, message, opts)} />;
     }
     if (q.type === 'longfile') {
-      return <FileBox id={id} textQuestion={q} text={v} onText={(next) => setValue(q.key, next)} fileQuestion={q} file={files[q.key] || null} missingName={cues[q.key]} onFile={(next) => setFile(q.key, next)} onReject={(name, message) => rejectFile(q.key, name, message)} />;
+      return <FileBox id={id} textQuestion={q} text={v} onText={(next) => setValue(q.key, next)} fileQuestion={q} file={files[q.key] || null} missingName={cues[q.key]} onFile={(next) => setFile(q.key, next)} onReject={(name, message, opts) => rejectFile(q.key, name, message, opts)} />;
     }
     if (q.type === 'long') {
       if (file) {
-        return <FileBox id={id} textQuestion={q} text={v} onText={(next) => setValue(q.key, next)} fileQuestion={file} file={files[file.key] || null} missingName={cues[file.key]} onFile={(next) => setFile(file.key, next)} onReject={(name, message) => rejectFile(file.key, name, message)} />;
+        return <FileBox id={id} textQuestion={q} text={v} onText={(next) => setValue(q.key, next)} fileQuestion={file} file={files[file.key] || null} missingName={cues[file.key]} onFile={(next) => setFile(file.key, next)} onReject={(name, message, opts) => rejectFile(file.key, name, message, opts)} />;
       }
-      return <textarea id={id} className="ifz-input ifz-textarea" value={v} onChange={(event) => setValue(q.key, event.target.value)} maxLength={q.max || 1000} placeholder={q.help || ''} required={q.required} />;
+      return <textarea id={id} className="ifz-input ifz-textarea" value={v} onChange={(event) => setValue(q.key, event.target.value)} maxLength={q.max || LONG_MAX} placeholder={q.help || ''} required={q.required} />;
     }
     if (q.type === 'single') {
       const blank = placeholderFor(q);
@@ -623,6 +682,7 @@ function SectionForm({ section, cycleId, onBusy }) {
                 )}
                 {control(row)}
                 {q.help && (q.type === 'single' || q.type === 'multi' || q.type === 'file') && <p className="ifz-help">{q.help}</p>}
+                <LengthNote q={q} value={values[q.key]} />
               </div>
             );
           })}
@@ -650,7 +710,7 @@ function SectionForm({ section, cycleId, onBusy }) {
           <p className={`ifz-error ${error || attachmentReminder ? 'is-visible' : ''}`} role="alert" aria-live="polite">
             {error || attachmentReminder}
           </p>
-          {error && sendFailed && <a className="ifz-mailto" href={mailtoFor(section, values, files)}>Email your answers instead</a>}
+          {error && (sendFailed || Object.values(tooBig).some(Boolean)) && <a className="ifz-mailto" href={mailtoFor(section, values, files, cues)}>Email your answers instead</a>}
         </div>
       </div>
       <button className="ifz-submit" type="submit" disabled={status !== 'idle'} aria-live="polite">
@@ -732,6 +792,11 @@ function FormPage({ formKey }) {
   const slow = useSlow(!site);
   const section = (site?.sections || []).find((s) => s?.key === formKey) || null;
   const open = isOpen(section);
+  // An address for a form that is closed or that this cycle does not have
+  // (an old link, a printed QR code) shows what is open, when anything is.
+  if (site && !site.error && !open && (site.sections || []).some(isOpen)) {
+    return <ApplyLanding note={section ? (section.full ? 'This form is full.' : 'This form is closed right now.') : ''} />;
+  }
   return (
     <main className="alt-page alt-page--apply alt-page--form">
       <section className="alt-section alt-section--apply">
@@ -788,7 +853,7 @@ const writeChoice = (key) => {
 // another form they pick, unless that form has a draft of its own. Files
 // never move.
 // Each question's length limit, as its input enforces it.
-const limitOf = (q) => q.max || (q.type === 'long' || q.type === 'longfile' ? 1000 : q.type === 'link' ? 500 : 200);
+const limitOf = (q) => q.max || (q.type === 'long' || q.type === 'longfile' ? LONG_MAX : q.type === 'link' ? 500 : 200);
 const fit = (v, q) => {
   if (typeof v !== 'string' || v.length <= limitOf(q)) return v;
   const cut = v.slice(0, limitOf(q));
@@ -805,7 +870,7 @@ const carryAnswers = (cycleId, from, to) => {
   if (Object.keys(carried).length) saveDraft(`${cycleId}:${to.key}`, carried);
 };
 
-function ApplyLanding() {
+function ApplyLanding({ note = '' }) {
   const site = useSite();
   const slow = useSlow(!site);
   const [picked, setPicked] = useState(readChoice);
@@ -838,6 +903,7 @@ function ApplyLanding() {
         <div className="apply-page">
           {site?.error && <><p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p><button type="button" className="apply-page__retry" onClick={() => window.location.reload()}>Try again</button></>}
           {slow && LOADING}
+          {note && <p className="apply-page__intro">{note} These are open:</p>}
           {choosing && (
             <div className="apply-choose">
               {site.apply.question && <h2 className="apply-page__title" id="apply-choose-question">{site.apply.question}</h2>}

@@ -133,6 +133,26 @@
   </head>
   <body>
     <div id="root"><!-- seo:fallback:start --><!-- seo:fallback:end --></div>
+    <script>
+      // A page cached from before a rebuild asks for script files the rebuild
+      // replaced, and would stay blank. Reload once to get the current page.
+      (function () {
+        var key = 'cupi:stale-reload';
+        function retry() {
+          try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (e) { return; }
+          location.reload();
+        }
+        addEventListener('error', function (e) {
+          var t = e.target;
+          if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK') && /\/assets\//.test(t.src || t.href || '')) retry();
+        }, true);
+        addEventListener('unhandledrejection', function (e) {
+          if (/dynamically imported module|Importing a module script failed/i.test(String((e.reason && e.reason.message) || e.reason))) retry();
+        });
+        addEventListener('vite:preloadError', function (e) { e.preventDefault(); retry(); });
+        addEventListener('load', function () { setTimeout(function () { try { sessionStorage.removeItem(key); } catch (e) { /* private mode */ } }, 10000); });
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

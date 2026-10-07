@@ -330,7 +330,7 @@ try {
   resetMount();
   tree = await submit({ status: 200, ok: true, json: async () => ({ ok: true, receipt: 'jr-1790000000000-abcdef0123456789abcdef01' }) }, withCycle);
   assert.equal(globalThis.lastRequest.url, 'https://wiki.cornellphysicalintelligence.com/api/recruit/site/interest');
-  assert.deepEqual(Object.keys(globalThis.lastRequest.body).sort(), ['answers', 'files', 'hp_8c1f'], 'the spam trap has a name no autofill tool fills');
+  assert.deepEqual(Object.keys(globalThis.lastRequest.body).sort(), ['answers', 'files', 'hp_8c1f', 'shown'], 'the spam trap has a name no autofill tool fills, and the page says which questions it showed');
   assert.equal(globalThis.lastRequest.body.answers.project, draft.project);
   assert.ok(tree.props.className.includes('ifz--done'));
   // Exercise the actual upload control and submit handler for both supported
