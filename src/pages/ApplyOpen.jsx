@@ -1,9 +1,10 @@
 // The RECRUITING-SEASON Apply page. The wiki decides what is on it: GET
 // /api/recruit/site names the cycle receiving the website and its forms,
 // each with an open flag and a
-// question list edited in the wiki's Applications settings. This page draws
-// whatever is open from those lists, so the team changes a form there and the
-// site follows on the next load. When nothing is open it renders ApplyClosed.
+// question list edited in the wiki's Applications settings, and which of them
+// /apply shows (several at once are a choice). This page draws whatever is
+// open from those lists, so the team changes a form there and the site
+// follows on the next load. When nothing is open it renders ApplyClosed.
 // Availability comes from the wiki’s receiving cycle.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import SiteFooter from '../components/SiteFooter';
@@ -21,6 +22,18 @@ const API = import.meta.env.DEV
 
 const CONTACT_EMAIL = 'cuphysint@cornell.edu';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// A dropped connection or a busy moment gets more tries before the visitor
+// sees a failure: the form's feed twice more, a submission twice more. A
+// submission that hears nothing for a minute (plus its upload time on a slow
+// phone) counts as dropped, and so does a feed load after 15 seconds.
+const RETRY_MS = [1500, 4000];
+const SEND_TIMEOUT_MS = 60000;
+const FEED_TIMEOUT_MS = 15000;
+const UPLOAD_BYTES_PER_MS = 16;
+const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const RECEIPT_RE = /^jr-\d{13}-[a-f0-9]{24}$/;
 
 // Wording and questions come from the selected cycle's form.
 const wordingFor = (section) => ({
@@ -329,7 +342,22 @@ const initialState = (section, draft) => {
   return { values, cues };
 };
 
-function SectionForm({ section, cycleId }) {
+// The answers as an email to the team, for when sending keeps failing. Files
+// cannot ride along in a mail link, so the body names them to attach.
+const mailtoFor = (section, values, files) => {
+  const lines = [section.title, ''];
+  const attach = [];
+  for (const q of section.form.questions) {
+    const v = values[q.key];
+    const text = Array.isArray(v) ? v.join(', ') : v === true ? 'Yes' : typeof v === 'string' ? v.trim() : '';
+    if (files[q.key]) attach.push(files[q.key].name);
+    if (text) lines.push(`${q.label || q.key}:`, text, '');
+  }
+  if (attach.length) lines.push(`Attach: ${attach.join(', ')}`);
+  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`${section.title}: ${String(values.name || '').trim()}`)}&body=${encodeURIComponent(lines.join('\n'))}`;
+};
+
+function SectionForm({ section, cycleId, onBusy }) {
   const draftKey = `${cycleId}:${section.key}`;
   const questions = section.form.questions;
   const wording = wordingFor(section);
@@ -341,6 +369,7 @@ function SectionForm({ section, cycleId }) {
   const [fileErrors, setFileErrors] = useState({});
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
+  const [sendFailed, setSendFailed] = useState(false);
   const honeypotRef = useRef(null);
   const inFlight = useRef(false);
   const unavailableFiles = Object.entries(cues).filter(([key, name]) => name && !questions.some((q) => q.key === key && (q.type === 'file' || q.type === 'longfile')));
@@ -427,7 +456,9 @@ function SectionForm({ section, cycleId }) {
     }
     inFlight.current = true;
     setError('');
+    setSendFailed(false);
     setStatus('sending');
+    onBusy?.(true);
     const snapshot = draftOf();
     saveDraft(draftKey, snapshot);
     try {
@@ -442,22 +473,59 @@ function SectionForm({ section, cycleId }) {
         if ((q.type === 'file' || q.type === 'longfile') && files[q.key]) attached[q.key] = { name: files[q.key].name, type: files[q.key].type, data: await readAsBase64(files[q.key]) };
       }
       const website = honeypotRef.current?.value || '';
-      const res = await fetch(`${API}/api/recruit/site/${encodeURIComponent(section.key)}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ answers, files: attached, website }),
-      });
-      const out = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(out.error || 'Something went wrong.');
-      if (out.ok !== true || !/^jr-\d{13}-[a-f0-9]{24}$/.test(out.receipt || '')) throw new Error('We could not confirm your submission. Please try again.');
+      const payload = JSON.stringify({ answers, files: attached, hp_8c1f: website });
+      const limit = SEND_TIMEOUT_MS + Math.ceil(payload.length / UPLOAD_BYTES_PER_MS);
+      const startedAt = Date.now();
+      // Retries reuse the same request. A try that got no answer may still
+      // have landed: then the server's "already sent" for a submission made
+      // since this send began means it did. A 429 means nothing was taken.
+      let unanswered = false;
+      for (let attempt = 0; ; attempt += 1) {
+        let res;
+        let out = null;
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), limit) : null;
+        try {
+          res = await fetch(`${API}/api/recruit/site/${encodeURIComponent(section.key)}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: payload,
+            ...(controller ? { signal: controller.signal } : {}),
+          });
+          out = await res.json().catch(() => null);
+        } catch (dropped) {
+          if (attempt < RETRY_MS.length) { unanswered = true; await wait(RETRY_MS[attempt]); continue; }
+          throw new Error('The connection dropped before we could confirm your submission.', { cause: dropped });
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+        if ((RETRY_STATUS.has(res.status) || (res.ok && !out)) && attempt < RETRY_MS.length) {
+          if (res.status !== 429) unanswered = true;
+          await wait(RETRY_MS[attempt]);
+          continue;
+        }
+        if (unanswered && res.status === 409 && out?.exists) {
+          const serverNow = RECEIPT_RE.test(out.receipt || '') ? Number(out.receipt.slice(3, 16)) : NaN;
+          const age = serverNow - Number(out.submitted);
+          if (out.submitted != null && Number.isFinite(age) && age <= Date.now() - startedAt + 60000) break;
+        }
+        if (unanswered && (res.status === 409 || res.status === 404) && !out?.exists) {
+          throw new Error(`We could not confirm whether your earlier try went through. Email ${CONTACT_EMAIL} with your name and we will check.`);
+        }
+        if (!res.ok) throw new Error(out?.error || 'Something went wrong.');
+        if (out?.ok !== true || !RECEIPT_RE.test(out.receipt || '')) throw new Error('We could not confirm your submission. Please try again.');
+        break;
+      }
       clearDraft(draftKey, snapshot);
       setStatus('done');
     } catch (problem) {
       setStatus('idle');
       const message = problem.message || 'Something went wrong.';
       setError(message.includes(CONTACT_EMAIL) ? message : `${message} You can also email ${CONTACT_EMAIL}.`);
+      setSendFailed(true);
     } finally {
       inFlight.current = false;
+      onBusy?.(false);
     }
   };
 
@@ -574,7 +642,7 @@ function SectionForm({ section, cycleId }) {
             ref={honeypotRef}
             className="ifz-honeypot"
             type="text"
-            name="website"
+            name="hp_8c1f"
             tabIndex={-1}
             autoComplete="off"
             aria-hidden="true"
@@ -582,6 +650,7 @@ function SectionForm({ section, cycleId }) {
           <p className={`ifz-error ${error || attachmentReminder ? 'is-visible' : ''}`} role="alert" aria-live="polite">
             {error || attachmentReminder}
           </p>
+          {error && sendFailed && <a className="ifz-mailto" href={mailtoFor(section, values, files)}>Email your answers instead</a>}
         </div>
       </div>
       <button className="ifz-submit" type="submit" disabled={status !== 'idle'} aria-live="polite">
@@ -611,16 +680,45 @@ function useSite() {
   const [site, setSite] = useState(null);
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API}/api/recruit/site`, { cache: 'no-store', signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((out) => setSite(Array.isArray(out?.sections) ? out : UNREACHABLE))
-      .catch(() => {
-        if (!controller.signal.aborted) setSite(UNREACHABLE);
-      });
+    const load = async () => {
+      for (let attempt = 0; ; attempt += 1) {
+        // Each try has its own time limit and also stops when the page goes.
+        const tryController = new AbortController();
+        const stop = () => tryController.abort();
+        controller.signal.addEventListener('abort', stop);
+        const timer = setTimeout(stop, FEED_TIMEOUT_MS);
+        try {
+          const res = await fetch(`${API}/api/recruit/site`, { cache: 'no-store', signal: tryController.signal });
+          if (!res.ok) throw new Error(String(res.status));
+          const out = await res.json();
+          return Array.isArray(out?.sections) ? out : UNREACHABLE;
+        } catch (problem) {
+          if (controller.signal.aborted) throw problem;
+          if (attempt >= RETRY_MS.length) return UNREACHABLE;
+          await wait(RETRY_MS[attempt]);
+        } finally {
+          clearTimeout(timer);
+          controller.signal.removeEventListener('abort', stop);
+        }
+      }
+    };
+    load().then((out) => { if (!controller.signal.aborted) setSite(out); }).catch(() => {});
     return () => controller.abort();
   }, []);
   return site;
 }
+
+// "Loading…" only when the wiki is slow to answer, never as a flash.
+function useSlow(waiting) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!waiting) return undefined;
+    const timer = setTimeout(() => setSlow(true), 2000);
+    return () => clearTimeout(timer);
+  }, [waiting]);
+  return waiting && slow;
+}
+const LOADING = <p className="apply-page__intro" role="status">Loading…</p>;
 
 const isOpen = (s) => s?.available === true && Array.isArray(s.form?.questions) && s.form.questions.length > 0;
 
@@ -631,13 +729,15 @@ const UNREACHABLE_NOTE = `We could not load the form right now. Try again in a m
 // the Apply page.
 function FormPage({ formKey }) {
   const site = useSite();
+  const slow = useSlow(!site);
   const section = (site?.sections || []).find((s) => s?.key === formKey) || null;
   const open = isOpen(section);
   return (
     <main className="alt-page alt-page--apply alt-page--form">
       <section className="alt-section alt-section--apply">
         <div className="apply-page">
-          {site?.error && <p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p>}
+          {site?.error && <><p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p><button type="button" className="apply-page__retry" onClick={() => window.location.reload()}>Try again</button></>}
+          {slow && LOADING}
           {site && !site.error && !open && (
             <p className="apply-page__intro">
               {section?.full ? 'This form is full.' : 'This form is closed right now.'} <a className="apply-page__link" href="/apply/">See what is open</a>.
@@ -661,31 +761,99 @@ export function ApplyApplication() { return <FormPage formKey="application" />; 
 
 
 
-// /apply is where the QR code and the menu land: one form, the one the wiki
-// marks for it, else the first open one. The other open forms live at their
-// own addresses (/apply/coffee/ and so on).
+// /apply is where the QR code and the menu land: the forms the wiki marks
+// for it. One open form is the page; several open at once are a choice the
+// visitor makes first, under the wiki's question and labels. With none
+// marked, the first open form. Every form also lives at its own address
+// (/apply/coffee/ and so on).
 export default function ApplyOpen() {
   const asked = typeof window === 'undefined' ? '' : formKeyFromSearch(window.location.search);
   if (asked) return <FormPage formKey={asked} />;
   return <ApplyLanding />;
 }
 
+// The visitor's pick survives a reload in this tab.
+const CHOICE_KEY = 'cupi:apply-choice';
+const readChoice = () => {
+  try { return window.sessionStorage?.getItem(CHOICE_KEY) || ''; } catch { return ''; }
+};
+const writeChoice = (key) => {
+  try {
+    if (key) window.sessionStorage?.setItem(CHOICE_KEY, key);
+    else window.sessionStorage?.removeItem(CHOICE_KEY);
+  } catch { /* the pick still holds on this page */ }
+};
+
+// Answers to the same question (key, type and wording) follow the visitor to
+// another form they pick, unless that form has a draft of its own. Files
+// never move.
+// Each question's length limit, as its input enforces it.
+const limitOf = (q) => q.max || (q.type === 'long' || q.type === 'longfile' ? 1000 : q.type === 'link' ? 500 : 200);
+const fit = (v, q) => {
+  if (typeof v !== 'string' || v.length <= limitOf(q)) return v;
+  const cut = v.slice(0, limitOf(q));
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
+};
+const carryAnswers = (cycleId, from, to) => {
+  if (!from || loadDraft(`${cycleId}:${to.key}`)) return;
+  const draft = loadDraft(`${cycleId}:${from.key}`);
+  if (!draft) return;
+  const same = (q) => from.form.questions.some((p) => p.key === q.key && p.type === q.type && p.label === q.label);
+  // An answer longer than the other form allows is cut to fit, so what the
+  // applicant sees there is exactly what will be sent.
+  const carried = Object.fromEntries(to.form.questions.filter((q) => q.type !== 'file' && q.type !== 'longfile' && same(q) && draft[q.key] !== undefined).map((q) => [q.key, fit(draft[q.key], q)]));
+  if (Object.keys(carried).length) saveDraft(`${cycleId}:${to.key}`, carried);
+};
+
 function ApplyLanding() {
   const site = useSite();
+  const slow = useSlow(!site);
+  const [picked, setPicked] = useState(readChoice);
+  // While a form is sending, the choice stays where it is.
+  const [busy, setBusy] = useState(false);
   const open = (site?.sections || []).filter(isOpen);
-  const active = open.find((s) => s.key === site?.landing) || open[0];
-  if (site && !active && !site.error) return <ApplyClosed />;
+  const choices = (Array.isArray(site?.apply?.choices) ? site.apply.choices : [])
+    .map((c) => ({ key: c?.key, label: c?.label, section: open.find((s) => s.key === c?.key) }))
+    .filter((c) => c.section);
+  const choosing = choices.length > 1;
+  const active = choosing
+    ? choices.find((c) => c.key === picked)?.section || null
+    : choices[0]?.section || open.find((s) => s.key === site?.landing) || open[0];
+  if (site && !active && !choosing && !site.error) return <ApplyClosed />;
+
+  const cycleId = site?.cycle?.id;
+  // Picking the picked form again puts it away.
+  const choose = (key) => {
+    if (busy) return;
+    const next = key === active?.key ? '' : key;
+    if (next) carryAnswers(cycleId, active, choices.find((c) => c.key === next).section);
+    setPicked(next);
+    writeChoice(next);
+  };
 
   return (
     <main className="alt-page alt-page--apply">
       <h1 className="visually-hidden">Cornell Physical Intelligence Applications</h1>
-      <section className="alt-section alt-section--apply">
+      <section className={`alt-section alt-section--apply${choosing ? ' alt-section--choosing' : ''}`}>
         <div className="apply-page">
-          {site?.error && <p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p>}
+          {site?.error && <><p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p><button type="button" className="apply-page__retry" onClick={() => window.location.reload()}>Try again</button></>}
+          {slow && LOADING}
+          {choosing && (
+            <div className="apply-choose">
+              {site.apply.question && <h2 className="apply-page__title" id="apply-choose-question">{site.apply.question}</h2>}
+              <div className="apply-choose__list" role="group" aria-labelledby={site.apply.question ? 'apply-choose-question' : undefined} aria-label={site.apply.question ? undefined : 'Forms'}>
+                {choices.map((c) => (
+                  <button key={c.key} type="button" className="apply-choice" aria-pressed={c.key === active?.key} aria-disabled={busy || undefined} onClick={() => choose(c.key)}>
+                    {c.label || c.section.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {active && (
             <>
-              <h2 className="apply-page__title">{active.title}</h2>
-              <SectionForm key={`${site.cycle?.id || 'none'}:${active.key}`} section={active} cycleId={site.cycle?.id} />
+              {!choosing && <h2 className="apply-page__title">{active.title}</h2>}
+              <SectionForm key={`${cycleId || 'none'}:${active.key}`} section={active} cycleId={cycleId} onBusy={setBusy} />
             </>
           )}
         </div>
