@@ -1,6 +1,39 @@
 export const WORK_AREAS = [
   {
+    id: 'hexapod',
+    title: 'Hexapod Locomotion',
+    // Plays on its own when on screen; the other projects play on hover.
+    autoplay: true,
+    teaser: 'A six-legged walker with 18 direct-drive joints, developed simulation first in Isaac Sim.',
+    ratio: '16 / 9',
+    clips: [
+      {
+        src: '/media/hexapod-motions-960.mp4',
+        poster: 'hexapod-motions',
+        label: 'Play: twenty optimized hexapod motions replayed in Isaac Sim',
+      },
+      {
+        src: '/media/hexapod-tripod-960.mp4',
+        poster: 'hexapod-tripod',
+        label: 'Play: the prescribed tripod gait walking forward in Isaac Sim',
+      },
+    ],
+    summary: `The hexapod project continues from last semester, in collaboration with
+      Cornell Geo Data. Version two is substantially larger with quasi direct drive motors
+      instead of servos. Every structural part is metal, and all PCBs are custom. The
+      walking is trained with PPO using motion priors, and the policy runs onboard on an
+      Orin Jetson Nano.`,
+    // Phrases in the summary that link out; the summary itself stays plain text for SEO.
+    summaryLinks: [{ text: 'Cornell Geo Data', href: 'https://cornellgeodata.com/' }],
+    links: [
+      { label: 'Research log', href: 'https://cornell-physical-intelligence.github.io/hexapod-cupi/' },
+      { label: 'Code', href: 'https://github.com/Cornell-Physical-Intelligence/hexapod-cupi' },
+    ],
+  },
+  {
+    id: 'manipulation',
     title: 'Robotic Manipulation Tasks',
+    teaser: 'Fine-tuning π0.5, an open vision-language-action model, to the grippers and tasks in our lab.',
     ratio: '1 / 1',
     clips: [
       {
@@ -21,7 +54,9 @@ export const WORK_AREAS = [
       placement, and tasks in our lab.`,
   },
   {
+    id: 'drone-racing',
     title: 'Autonomous Perception and Navigation',
+    teaser: 'Racing autonomy for the Anduril AI Grand Prix. We passed Virtual Qualifier 1 with no learned network in the loop.',
     ratio: '4 / 3',
     clips: [
       {
@@ -36,12 +71,11 @@ export const WORK_AREAS = [
       },
     ],
     summary: `We build the autonomy stack for the Anduril AI Grand Prix, an autonomous
-      drone racing competition run with the Drone Champions League. We passed Virtual
-      Qualifier 1 with a fully deterministic policy: no learned network anywhere in the
-      loop, just dead reckoning against the released course map with visual gate
-      corrections. Virtual Qualifier 2 blocks every pose and gate telemetry stream,
-      leaving a monocular camera and IMU, so the policy now guides on bearings alone and
-      reads closing rate from optical looming.`,
+      drone racing competition run with the Drone Champions League, and passed Virtual
+      Qualifier 1 with a fully deterministic policy and no learned network in the loop.
+      Virtual Qualifier 2 removes all pose and gate telemetry, leaving a monocular camera
+      and IMU, so the policy now guides on bearings alone and reads closing rate from
+      optical looming.`,
     partner: {
       href: 'https://theaigrandprix.com/',
       src: 'icons/ai-gp-logo-orange.svg',
@@ -51,3 +85,16 @@ export const WORK_AREAS = [
 ];
 
 export const normalizedWorkSummary = (area) => area.summary.replace(/\s+/g, ' ').trim();
+
+// The summary split into text and link pieces, in order, for the Work page to render.
+export const workSummaryParts = (area) => {
+  let parts = [normalizedWorkSummary(area)];
+  for (const link of area.summaryLinks ?? []) {
+    parts = parts.flatMap((part) => {
+      if (typeof part !== 'string') return [part];
+      const pieces = part.split(link.text);
+      return pieces.flatMap((piece, i) => (i ? [link, piece] : [piece]));
+    });
+  }
+  return parts.filter((part) => part !== '');
+};

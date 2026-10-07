@@ -7,7 +7,7 @@
   max-width: 100vw;
   margin-left: 50%;
   transform: translateX(-50%);
-  margin-top: clamp(160px, 20vw, 320px);
+  margin-top: clamp(104px, 13vw, 208px);
   padding: 0;
   position: relative;
   content-visibility: auto;

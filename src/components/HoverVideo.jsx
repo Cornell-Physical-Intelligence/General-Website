@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ResponsiveImage from './ResponsiveImage';
 import workImageManifest from 'virtual:cupi-image-manifest/work';
 import './HoverVideo.css';
@@ -31,12 +31,45 @@ import './HoverVideo.css';
  * Pass the source footage's own ratio to avoid `object-fit: cover` cropping content out —
  * it matters for clips with overlaid telemetry near the edges.
  */
-// Two per row inside a 960px column, one per row on a phone.
+// Two per row inside a 960px column, one per row on a phone. Callers laying tiles out
+// differently pass their own `sizes`.
 const POSTER_SIZES = '(max-width: 640px) 100vw, (max-width: 960px) 50vw, 480px';
 
-export default function HoverVideo({ src, poster, label, ratio }) {
+const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+export default function HoverVideo({
+  src,
+  poster,
+  label,
+  ratio,
+  sizes = POSTER_SIZES,
+  loading,
+  autoplay = false,
+}) {
+  const tileRef = useRef(null);
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(false);
+
+  // An `autoplay` clip runs on its own, muted and looping, whenever at least a quarter
+  // of it is on screen, and pauses when it scrolls away, so it costs nothing until it
+  // is seen. Reduced motion turns it back into an ordinary hover clip.
+  useEffect(() => {
+    const tile = tileRef.current;
+    const video = videoRef.current;
+    if (!autoplay || !tile || !video || prefersReducedMotion()) return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) video.play().catch(() => {});
+        else video.pause();
+      },
+      { threshold: 0.25 },
+    );
+    observer.observe(tile);
+    return () => observer.disconnect();
+  }, [autoplay]);
+
+  // Hover start/stop would fight the autoplay, so it only applies to ordinary clips.
+  const hoverDriven = () => !autoplay || prefersReducedMotion();
 
   const startPlaying = () => {
     // First call is also what triggers the download — preload="none" until now.
@@ -57,10 +90,11 @@ export default function HoverVideo({ src, poster, label, ratio }) {
     /* Not a <button>: the corner control is one, and buttons don't nest. The surface
        keeps its pointer conveniences; the button carries the semantics. */
     <div
+      ref={tileRef}
       className={`hover-video ${playing ? 'is-playing' : ''}`.trim()}
       style={ratio ? { '--hover-video-ratio': ratio } : undefined}
-      onPointerEnter={(e) => e.pointerType !== 'touch' && startPlaying()}
-      onPointerLeave={(e) => e.pointerType !== 'touch' && stopPlaying()}
+      onPointerEnter={(e) => e.pointerType !== 'touch' && hoverDriven() && startPlaying()}
+      onPointerLeave={(e) => e.pointerType !== 'touch' && hoverDriven() && stopPlaying()}
       onClick={() => {
         // Checked at event time, not render: it is the hover capability that separates
         // a scroll-dragging thumb from a mouse, not the viewport width.
@@ -72,7 +106,8 @@ export default function HoverVideo({ src, poster, label, ratio }) {
         manifest={workImageManifest}
         group="poster"
         name={poster}
-        sizes={POSTER_SIZES}
+        sizes={sizes}
+        loading={loading}
         className="hover-video__still"
         draggable={false}
         decoding="async"

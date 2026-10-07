@@ -48,11 +48,12 @@
 
 /* Directly under the rule, and smaller than the title it explains. */
 .sponsors__lede {
+  /* A reading measure: the copy has grown past one line, and at full width the second
+     line ran nearly 190 characters from the first. */
+  max-width: 64ch;
   margin: clamp(10px, 1.5vw, 16px) 0 0;
-  /* No character cap: at full width the sentence fits on one line, and it wraps by
-     itself once the column is too narrow for it. */
   font-family: 'Times New Roman', Times, serif;
-  font-size: clamp(0.74rem, 1vw, 0.86rem);
+  font-size: clamp(0.8rem, 1.1vw, 0.94rem);
   line-height: 1.55;
   color: rgba(var(--fg-rgb), 0.6);
   /* Above the artwork, which now runs at full strength behind this area. */

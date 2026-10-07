@@ -26,7 +26,8 @@
   position: relative;
   max-width: 960px;
   width: 100%;
-  margin: 0 auto clamp(80px, 12vw, 180px);
+  /* Current Work follows directly, so only enough room for its label to breathe. */
+  margin: 0 auto clamp(16px, 3vw, 40px);
   border-radius: var(--box-radius);
   box-shadow: inset 0 0 0 2px transparent;
   transition: box-shadow 0.17s ease;

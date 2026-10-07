@@ -3,8 +3,9 @@
    still the gallery's: same eyebrow, shimmer-then-fade cover, same lightbox backdrop. */
 .reports-section {
   width: min(960px, 100%);
-  /* This section opens the Work page, so it carries the clearance from the glass bar. */
-  margin: clamp(28px, 5vw, 64px) auto 0;
+  /* Follows the projects on the Work page; the project stack's bottom margin is the
+     gap above it. */
+  margin: 0 auto;
   position: relative;
 }
 

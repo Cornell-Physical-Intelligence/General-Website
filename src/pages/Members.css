@@ -128,6 +128,10 @@
 
 /* The team lead's title carries full weight rather than sitting back with the rest.
    Full-strength foreground, not a literal black, so it stays legible on the dark page. */
+.member__nowrap {
+  white-space: nowrap;
+}
+
 .member__meta.is-lead {
   color: var(--fg);
 }

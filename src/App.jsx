@@ -55,6 +55,27 @@ if (SHOW_CUSTOMIZE) {
   Controls = (await import('./components/Controls')).default;
 }
 
+// A link such as /work/#hexapod names a section of a page. The page may still be a lazy
+// chunk resolving when the route changes, so look for the section over the next few
+// frames rather than once, and fall back to the top of the page.
+const scrollToHashOrTop = () => {
+  const id = decodeURIComponent(window.location.hash.slice(1));
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  if (!id) return () => {};
+  let frames = 0;
+  let raf = 0;
+  const seek = () => {
+    const target = document.getElementById(id);
+    if (target) {
+      target.scrollIntoView({ block: 'start' });
+    } else if (frames++ < 60) {
+      raf = requestAnimationFrame(seek);
+    }
+  };
+  raf = requestAnimationFrame(seek);
+  return () => cancelAnimationFrame(raf);
+};
+
 export default function App({ initialPage, InitialPage }) {
   const [currentPage, setCurrentPage] = useState(initialPage ?? getPageFromPath);
   const [inverted, setInverted] = useState(P.invert);
@@ -73,9 +94,7 @@ export default function App({ initialPage, InitialPage }) {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [currentPage]);
+  useEffect(() => scrollToHashOrTop(), [currentPage]);
 
   useEffect(() => {
     applyPageSeo(currentPage);
@@ -117,8 +136,12 @@ export default function App({ initialPage, InitialPage }) {
     };
   }, []);
 
-  const navigate = (page) => {
-    writePath(page);
+  const navigate = (page, hash = '') => {
+    writePath(page, hash);
+    if (page === currentPage) {
+      scrollToHashOrTop();
+      return;
+    }
     setCurrentPage(page);
   };
 
@@ -194,7 +217,7 @@ export default function App({ initialPage, InitialPage }) {
       case 'racingReport':
         return <RacingReport />;
       default:
-        return <Home titleApi={titleApi} />;
+        return <Home titleApi={titleApi} onNavigate={navigate} />;
     }
   };
 

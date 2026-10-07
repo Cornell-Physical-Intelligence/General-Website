@@ -69,14 +69,6 @@ export const TEAM_SECTIONS = [
         project: 'Quad'
       },
       {
-        name: 'Josh Lennon',
-        role: 'Computer Science Co-Lead',
-        imageBase: 'JoshLennon',
-        bio: BIO_PLACEHOLDER,
-        year: 'Junior',
-        project: 'Quad'
-      },
-      {
         name: 'Aidan Moran',
         imageBase: 'Aidan',
         bio: BIO_PLACEHOLDER,
@@ -136,12 +128,6 @@ export const TEAM_SECTIONS = [
         year: 'Freshman'
       },
       {
-        name: 'Pratyush Saxena',
-        imageBase: 'Pratyush',
-        bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
-      },
-      {
         name: 'Shaurya Sen',
         imageBase: 'Shaurya',
         bio: BIO_PLACEHOLDER,
@@ -158,18 +144,6 @@ export const TEAM_SECTIONS = [
         imageBase: 'Ty',
         bio: BIO_PLACEHOLDER,
         year: 'Freshman'
-      },
-      {
-        name: 'Mouhammad Dia',
-        imageBase: 'Mo',
-        bio: BIO_PLACEHOLDER,
-        year: 'Sophomore'
-      },
-      {
-        name: 'Ruichen Bao',
-        imageBase: 'Ruichen',
-        bio: BIO_PLACEHOLDER,
-        meta: 'Graduate Student'
       },
       {
         name: 'Alicia He',
@@ -207,23 +181,11 @@ export const TEAM_SECTIONS = [
         year: 'Freshman'
       },
       {
-        name: 'Cam Hogan',
-        imageBase: 'Cam',
-        bio: BIO_PLACEHOLDER,
-        meta: 'Graduate Student'
-      },
-      {
         name: 'Julian Gasharov',
         imageBase: 'Julian',
         bio: BIO_PLACEHOLDER,
         year: 'Sophomore'
-      },
-      {
-        name: 'Anant Gupta',
-        imageBase: 'Anant',
-        bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
-      },
+      }
     ]
   }
 ];

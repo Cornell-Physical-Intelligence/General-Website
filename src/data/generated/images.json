@@ -823,6 +823,58 @@
           "h": 720
         }
       ]
+    },
+    "hexapod-motions": {
+      "avif": [
+        {
+          "src": "/media/hexapod-motions-640.avif",
+          "w": 640,
+          "h": 360
+        },
+        {
+          "src": "/media/hexapod-motions-1080.avif",
+          "w": 1080,
+          "h": 608
+        }
+      ],
+      "webp": [
+        {
+          "src": "/media/hexapod-motions-640.webp",
+          "w": 640,
+          "h": 360
+        },
+        {
+          "src": "/media/hexapod-motions-1080.webp",
+          "w": 1080,
+          "h": 608
+        }
+      ]
+    },
+    "hexapod-tripod": {
+      "avif": [
+        {
+          "src": "/media/hexapod-tripod-640.avif",
+          "w": 640,
+          "h": 360
+        },
+        {
+          "src": "/media/hexapod-tripod-1080.avif",
+          "w": 1080,
+          "h": 608
+        }
+      ],
+      "webp": [
+        {
+          "src": "/media/hexapod-tripod-640.webp",
+          "w": 640,
+          "h": 360
+        },
+        {
+          "src": "/media/hexapod-tripod-1080.webp",
+          "w": 1080,
+          "h": 608
+        }
+      ]
     }
   },
   "report:racing-without-a-map": {

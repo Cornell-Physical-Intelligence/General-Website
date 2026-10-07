@@ -20,22 +20,22 @@ export const getPageFromPath = () => {
   );
 };
 
-export const writePath = (page) => {
+export const writePath = (page, hash = '') => {
   const legacyPage = ['home', 'work', 'members', 'sponsors', 'apply'].includes(page);
-  window.history.pushState(
-    {},
-    '',
-    legacyPage ? (page === 'home' ? '/' : `/${page}`) : getPageSeo(page).path,
-  );
+  const path = legacyPage ? (page === 'home' ? '/' : `/${page}`) : getPageSeo(page).path;
+  window.history.pushState({}, '', hash ? `${path}#${hash}` : path);
 };
 
 // Anything still linking to the old #work style URLs is rewritten in place, once, before
 // the first render, so those links keep working and no stray fragment is left in the bar.
+// A fragment that names a section (/work/#hexapod) is kept: App scrolls to it.
+const SECTION_HASH = /^#[a-z][a-z0-9-]*$/;
+
 export const normalizeLegacyHash = () => {
   const legacy = window.location.hash.replace('#', '');
   if (VALID_PAGES.includes(legacy)) {
     window.history.replaceState({}, '', legacy === 'home' ? '/' : `/${legacy}`);
-  } else if (window.location.hash) {
+  } else if (window.location.hash && !SECTION_HASH.test(window.location.hash)) {
     window.history.replaceState({}, '', window.location.pathname + window.location.search);
   }
 };

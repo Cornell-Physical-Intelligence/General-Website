@@ -4,7 +4,7 @@ export const SITE_URL = 'https://cornellphysicalintelligence.com';
 export const SITE_NAME = 'Cornell Physical Intelligence';
 export const SITE_ACRONYM = 'CUPI';
 export const SITE_RELEASE_DATE = '2026-08-16';
-export const HOME_LAST_MODIFIED = '2026-09-03';
+export const HOME_LAST_MODIFIED = '2026-10-05';
 export const SITE_ALTERNATE_NAMES = [
   SITE_ACRONYM,
   'Cornell University Physical Intelligence',
@@ -42,8 +42,8 @@ export const PAGE_SEO = {
     title: 'Robotics Projects & Reports | Cornell Physical Intelligence',
     heading: 'Robotics Projects and Technical Reports',
     description:
-      'Explore Cornell Physical Intelligence (CUPI) robotics projects in manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix.',
-    lastModified: '2026-08-21',
+      'Explore Cornell Physical Intelligence (CUPI) robotics projects in hexapod locomotion, manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix.',
+    lastModified: '2026-10-05',
   },
   members: {
     path: '/members/',

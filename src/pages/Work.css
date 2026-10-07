@@ -28,6 +28,8 @@
 .work-area {
   display: flex;
   flex-direction: column;
+  /* Linked to from the homepage; land below the fixed menu bar, not under it. */
+  scroll-margin-top: clamp(84px, 12vh, 120px);
 }
 
 .work-area .section-label {
@@ -49,10 +51,11 @@
 /* ------------------------------------------------------------------ summary */
 .work-area__summary {
   margin: clamp(14px, 2.2vw, 22px) 0 0;
-  font-size: clamp(0.72rem, 1.15vw, 0.8rem);
-  line-height: 1.6;
-  color: rgba(var(--fg-rgb), 0.72);
+  font-size: clamp(0.8rem, 1.2vw, 0.9rem);
+  line-height: 1.65;
+  color: rgba(var(--fg-rgb), 0.74);
   text-align: left;
+  text-wrap: pretty;
 }
 
 /* -------------------------------------------------------------- partner */
@@ -63,6 +66,34 @@
   flex-wrap: wrap;
   gap: clamp(12px, 2vw, 24px);
   margin-top: clamp(14px, 2.2vw, 22px);
+}
+
+/* Outbound links (research log, code) sit at the copy's own size and weight; the
+   arrow says they leave the site. */
+.work-area__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(0.8rem, 1.2vw, 0.9rem);
+}
+
+.work-area__summary a,
+.work-area__links a {
+  color: rgba(var(--fg-rgb), 0.86);
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--fg-rgb), 0.28);
+  text-underline-offset: 0.22em;
+  transition: text-decoration-color 0.15s ease;
+}
+
+.work-area__summary a:hover,
+.work-area__summary a:focus-visible,
+.work-area__links a:hover,
+.work-area__links a:focus-visible {
+  text-decoration-color: currentColor;
 }
 
 /* The partner mark is the one piece of colour on the page, so it gets no border or

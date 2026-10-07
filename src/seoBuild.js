@@ -13,6 +13,7 @@ const BUILD_ENRICHMENT = {
   home: {
     fallbackIntro: ORGANIZATION_DESCRIPTION,
     highlights: [
+      'Hexapod locomotion, developed simulation first',
       'Intelligent robotic manipulation',
       'Autonomous perception and navigation',
       'Multidisciplinary mechanical, electrical, and software engineering',
@@ -35,6 +36,7 @@ const BUILD_ENRICHMENT = {
   },
   work: {
     highlights: [
+      'Hexapod locomotion on an 18-joint direct-drive walker',
       'Robotic manipulation with vision-language-action policies',
       'Autonomous drone perception and navigation',
       'CUPI technical reports and project results',

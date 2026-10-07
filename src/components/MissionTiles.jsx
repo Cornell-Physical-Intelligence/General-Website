@@ -7,7 +7,7 @@ const stats = [
   { label: 'Subteams', value: 4 }
 ];
 
-function MissionTiles({ played, onPlay }) {
+function MissionTiles({ played, onPlay, children }) {
   const statRefs = useRef([]);
   const blurbRef = useRef(null);
 
@@ -74,6 +74,7 @@ function MissionTiles({ played, onPlay }) {
             instructions.
           </p>
         </div>
+        {children}
         <div className="mission-tiles__stats" aria-label="Team scale insights">
           {stats.map((stat, index) => (
             <div

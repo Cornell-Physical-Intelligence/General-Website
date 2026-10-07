@@ -49,6 +49,20 @@ const sourcesFor = (member) => {
 
 const hasPhoto = (member) => Boolean(PHOTOS[member.imageBase]);
 
+// "Co-Lead" must not break at its hyphen: "Computer Science Co-" over "Lead" read as a
+// typo in a narrow column. Wrapped in a no-wrap span rather than given a non-breaking
+// hyphen, which the subset Questrial does not carry.
+const keepTogether = (text) =>
+  text.split(/(Co-Lead)/).map((part, i) =>
+    part === 'Co-Lead' ? (
+      <span className="member__nowrap" key={i}>
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+
 // Role wins over class year; "First Year" reads better as "Freshman".
 const metaFor = (member) => {
   if (member.role) return member.role;
@@ -88,7 +102,9 @@ function MemberCard({ member, isOpen, onToggle, eager }) {
       </button>
       <p className="member__name">{member.name}</p>
       {meta && (
-        <p className={`member__meta${member.role === 'Team Lead' ? ' is-lead' : ''}`}>{meta}</p>
+        <p className={`member__meta${member.role === 'Team Lead' ? ' is-lead' : ''}`}>
+          {keepTogether(meta)}
+        </p>
       )}
     </article>
   );
