@@ -14,7 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- seo:head:start -->
     <title>Robotics Projects &amp; Reports | Cornell Physical Intelligence</title>
-    <meta name="description" content="Explore Cornell Physical Intelligence (CUPI) robotics projects in manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix." />
+    <meta name="description" content="Explore Cornell Physical Intelligence (CUPI) robotics projects in hexapod locomotion, manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix." />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="application-name" content="Cornell Physical Intelligence" />
     <link rel="canonical" href="https://cornellphysicalintelligence.com/work/" />
@@ -22,11 +22,11 @@
     <meta property="og:locale" content="en_US" />
     <meta property="og:site_name" content="Cornell Physical Intelligence" />
     <meta property="og:title" content="Robotics Projects &amp; Reports | Cornell Physical Intelligence" />
-    <meta property="og:description" content="Explore Cornell Physical Intelligence (CUPI) robotics projects in manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix." />
+    <meta property="og:description" content="Explore Cornell Physical Intelligence (CUPI) robotics projects in hexapod locomotion, manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix." />
     <meta property="og:url" content="https://cornellphysicalintelligence.com/work/" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Robotics Projects &amp; Reports | Cornell Physical Intelligence" />
-    <meta name="twitter:description" content="Explore Cornell Physical Intelligence (CUPI) robotics projects in manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix." />
+    <meta name="twitter:description" content="Explore Cornell Physical Intelligence (CUPI) robotics projects in hexapod locomotion, manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix." />
     <meta property="og:image" content="https://cornellphysicalintelligence.com/og-cupi.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -40,7 +40,7 @@
       "@id": "https://cornellphysicalintelligence.com/work/#webpage",
       "url": "https://cornellphysicalintelligence.com/work/",
       "name": "Robotics Projects and Technical Reports",
-      "description": "Explore Cornell Physical Intelligence (CUPI) robotics projects in manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix.",
+      "description": "Explore Cornell Physical Intelligence (CUPI) robotics projects in hexapod locomotion, manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix.",
       "isPartOf": {
         "@id": "https://cornellphysicalintelligence.com/#website"
       },
@@ -180,17 +180,18 @@
         .seo-fallback { display: block; }
       </style>
     </noscript>
-    <script type="module" crossorigin src="/assets/index-eH5dxWNC.js"></script>
+    <script type="module" crossorigin src="/assets/index-BN79V2mW.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/SiteFooter-DirRLX_y.js">
     <link rel="modulepreload" crossorigin href="/assets/ResponsiveImage-CuXImRy9.js">
-    <link rel="modulepreload" crossorigin href="/assets/Overlay-c0mSxYc-.js">
+    <link rel="modulepreload" crossorigin href="/assets/Overlay-DF-zjXWX.js">
     <link rel="modulepreload" crossorigin href="/assets/applyForms-BzZsPuSk.js">
     <link rel="modulepreload" crossorigin href="/assets/reportMetadata-D7Fmou2z.js">
-    <link rel="modulepreload" crossorigin href="/assets/seo-v-BJAans.js">
+    <link rel="modulepreload" crossorigin href="/assets/seo-_JR7wWxa.js">
     <link rel="stylesheet" crossorigin href="/assets/SiteFooter-CPaqTWOk.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-1OQUMVuI.css">
-    <link rel="modulepreload" crossorigin href="/assets/Work-C2AavuLs.js" />
-    <link rel="preload" as="style" crossorigin href="/assets/Work-4v2TkgS-.css" />
+    <link rel="stylesheet" crossorigin href="/assets/Overlay-hnipvRN2.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-B5V5rO3W.css">
+    <link rel="modulepreload" crossorigin href="/assets/Work-Di4Sx6dj.js" />
+    <link rel="preload" as="style" crossorigin href="/assets/Work-CCZih94D.css" />
   </head>
   <body>
     <div id="root"><!-- seo:fallback:start -->
@@ -208,8 +209,9 @@
       <main class="seo-fallback__main">
         <p class="seo-fallback__eyebrow">CUPI at Cornell University</p>
         <h1>Robotics Projects and Technical Reports</h1>
-        <p class="seo-fallback__intro">Explore Cornell Physical Intelligence (CUPI) robotics projects in manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix.</p>
+        <p class="seo-fallback__intro">Explore Cornell Physical Intelligence (CUPI) robotics projects in hexapod locomotion, manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix.</p>
         <ul class="seo-fallback__highlights">
+          <li>Hexapod locomotion on an 18-joint direct-drive walker</li>
           <li>Robotic manipulation with vision-language-action policies</li>
           <li>Autonomous drone perception and navigation</li>
           <li>CUPI technical reports and project results</li>
@@ -223,13 +225,18 @@
         </section>
         <div class="seo-fallback__sections">
           <section>
+            <h2>Hexapod Locomotion</h2>
+            <p>The hexapod project continues from last semester, in collaboration with Cornell Geo Data. Version two is substantially larger with quasi direct drive motors instead of servos. Every structural part is metal, and all PCBs are custom. The walking is trained with PPO using motion priors, and the policy runs onboard on an Orin Jetson Nano.</p>
+
+          </section>
+          <section>
             <h2>Robotic Manipulation Tasks</h2>
             <p>The clips above are our fine-tuned π0.5 policy running on our own arm. π0.5 is Physical Intelligence's open vision-language-action model, so we are not training from scratch: the released checkpoint brings broad manipulation priors from web and robot data, and our work is adapting it to the grippers, camera placement, and tasks in our lab.</p>
 
           </section>
           <section>
             <h2>Autonomous Perception and Navigation</h2>
-            <p>We build the autonomy stack for the Anduril AI Grand Prix, an autonomous drone racing competition run with the Drone Champions League. We passed Virtual Qualifier 1 with a fully deterministic policy: no learned network anywhere in the loop, just dead reckoning against the released course map with visual gate corrections. Virtual Qualifier 2 blocks every pose and gate telemetry stream, leaving a monocular camera and IMU, so the policy now guides on bearings alone and reads closing rate from optical looming.</p>
+            <p>We build the autonomy stack for the Anduril AI Grand Prix, an autonomous drone racing competition run with the Drone Champions League, and passed Virtual Qualifier 1 with a fully deterministic policy and no learned network in the loop. Virtual Qualifier 2 removes all pose and gate telemetry, leaving a monocular camera and IMU, so the policy now guides on bearings alone and reads closing rate from optical looming.</p>
 
           </section>
         </div>
