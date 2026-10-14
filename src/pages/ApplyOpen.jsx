@@ -846,6 +846,28 @@ export default function ApplyOpen() {
   return <ApplyLanding />;
 }
 
+// What the wiki puts above the forms, in its order: headings, lines of text,
+// and the deadline, worded from the cycle's own ("Thursday, October 30 at
+// 11:59 PM EDT"). Empty blocks draw nothing.
+const dueText = (ts) => {
+  const d = new Date(Number(ts));
+  if (!ts || Number.isNaN(d.getTime())) return '';
+  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);
+  const time = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(d);
+  return `${day} at ${time}`;
+};
+function PageBlocks({ blocks }) {
+  const drawn = (Array.isArray(blocks) ? blocks : []).map((b, i) => {
+    const text = typeof b?.text === 'string' ? b.text.trim() : '';
+    if (b?.type === 'heading' && text) return <h2 key={i} className="apply-page__title">{text}</h2>;
+    if (b?.type === 'text' && text) return <p key={i} className="apply-page__intro apply-page__block">{text}</p>;
+    const due = b?.type === 'deadline' ? dueText(b.closesAt) : '';
+    if (due) return <p key={i} className="apply-page__intro">{text || 'Applications are due'} <strong className="apply-page__due">{due}</strong></p>;
+    return null;
+  }).filter(Boolean);
+  return drawn.length ? <div className="apply-page__blocks">{drawn}</div> : null;
+}
+
 // The visitor's pick survives a reload in this tab.
 const CHOICE_KEY = 'cupi:apply-choice';
 const readChoice = () => {
@@ -910,6 +932,7 @@ function ApplyLanding({ note = '' }) {
           {site?.error && <><p className="apply-page__intro" role="status">{UNREACHABLE_NOTE}</p><button type="button" className="apply-page__retry" onClick={() => window.location.reload()}>Try again</button></>}
           {slow && LOADING}
           {note && <p className="apply-page__intro">{note} These are open:</p>}
+          {(choosing || active) && <PageBlocks blocks={site?.apply?.blocks} />}
           {choosing && (
             <div className="apply-choose">
               {site.apply.question && <h2 className="apply-page__title" id="apply-choose-question">{site.apply.question}</h2>}

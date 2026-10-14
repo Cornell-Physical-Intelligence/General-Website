@@ -216,6 +216,30 @@ try {
     walk(page, (n) => n.type?.name === 'SectionForm').props.onBusy(false);
     entries.clear();
   }
+  // What the wiki puts above the forms: headings, text and the deadline, before the choice.
+  {
+    const due = Date.UTC(2026, 9, 31, 3, 59, 59);
+    const blocks = [{ type: 'heading', text: 'Fall recruiting' }, { type: 'text', text: 'Line one\nLine two' }, { type: 'text', text: '  ' }, { type: 'deadline', text: '', closesAt: due }, { type: 'video', text: 'x' }];
+    const paged = await pageWith({ ...marked(['interest', 'coffee']), apply: { ...marked(['interest', 'coffee']).apply, blocks } });
+    const node = walk(paged, (n) => n.type?.name === 'PageBlocks');
+    assert.ok(node, 'the page draws the blocks');
+    const page = walk(paged, (n) => n.props?.className === 'apply-page');
+    const kids = [page.props.children].flat(Infinity);
+    assert.ok(kids.indexOf(node) < kids.findIndex((k) => k?.props?.className === 'apply-choose'), 'above the choice');
+    const drawn = node.type(node.props);
+    assert.equal(drawn.props.className, 'apply-page__blocks');
+    const parts = [drawn.props.children].flat();
+    assert.deepEqual(parts.map((p) => p.type), ['h2', 'p', 'p'], 'empty text and unknown blocks draw nothing');
+    assert.equal(parts[0].props.children, 'Fall recruiting');
+    assert.match(parts[1].props.className, /apply-page__block/, 'text keeps its line breaks');
+    const dueKids = [parts[2].props.children].flat();
+    assert.equal(dueKids[0], 'Applications are due', 'the deadline has words before it, the default when none');
+    assert.equal(walk(parts[2], (n) => n.type === 'strong').props.children, 'Friday, October 30 at 11:59 PM EDT', 'and the date in Eastern time');
+    assert.equal((await pageWith({ ...open([]), apply: { question: 'Q', choices: [], blocks } })).type, 'closed', 'a closed page shows none of it');
+    const bare = await pageWith({ ...marked(['interest', 'coffee']), apply: { ...marked(['interest', 'coffee']).apply, blocks: [{ type: 'text', text: '' }] } });
+    const none = walk(bare, (n) => n.type?.name === 'PageBlocks');
+    assert.equal(none.type(none.props), null, 'nothing to say draws no wrapper');
+  }
   const oneLeft = await pageWith(marked(['coffee']));
   assert.equal(radiosOf(oneLeft).length, 0, 'one marked form still open needs no choice');
   assert.equal(walk(oneLeft, (n) => n.type?.name === 'SectionForm').props.section.key, 'coffee');

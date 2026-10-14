@@ -36,6 +36,26 @@
   color: rgba(var(--fg-rgb), 0.65);
 }
 
+/* What the wiki puts above the forms: text keeps its line breaks, and the
+   deadline's date reads at full strength on one line. */
+.apply-page__blocks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: clamp(4px, 1vw, 10px);
+}
+
+.apply-page__block {
+  white-space: pre-line;
+}
+
+.apply-page__due {
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
 .ifz {
   width: min(440px, 88vw);
   display: flex;

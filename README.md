@@ -43,7 +43,10 @@ its question list: short and long text, email, one choice, several choices, a
 checkbox, a link, a file. Titles, descriptions and questions are edited in the
 wiki on a stage's Form tab; where each form is (on `/apply`, at its own link
 only, or off), the order and labels `/apply` lists them by, and the question
-above them are set on the cycle's Website tab, which previews the page. The
+above them are set on the cycle's Website tab, which previews the page, as
+is what the page says above the forms (headings, text, and the deadline,
+drawn from the cycle's own as "Applications are due Friday, October 30 at
+11:59 PM EDT"; empty ones draw nothing, and the closed page shows none). The
 site follows on its next load. `/apply` (the QR code's address) shows the
 forms set "On /apply" that can take a response: one alone, or several as a
 choice. A form set "Link only" is open at its own address and never shown at
