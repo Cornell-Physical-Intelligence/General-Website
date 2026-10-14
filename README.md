@@ -40,18 +40,22 @@ cycle is receiving the website and which of its forms are open (a cycle
 starts with an interest form, coffee chats and an application form, and the
 team adds or removes forms in the wiki), then draws each open form from
 its question list: short and long text, email, one choice, several choices, a
-checkbox, a link, a file. Titles, descriptions, questions, the open flags, and
-which form `/apply` shows are edited in the wiki under Applications → the
-cycle → the form's tab → Form, and the site follows on its next load. `/apply`
-(the QR code's address) shows one form: the one marked "Shown at /apply" in
-the wiki, else the first open one. When no form is open, the page renders
+checkbox, a link, a file. Titles, descriptions and questions are edited in the
+wiki on a stage's Form tab; where each form is (on `/apply`, at its own link
+only, or off), the order and labels `/apply` lists them by, and the question
+above them are set on the cycle's Website tab, which previews the page. The
+site follows on its next load. `/apply` (the QR code's address) shows the
+forms set "On /apply" that can take a response: one alone, or several as a
+choice. A form set "Link only" is open at its own address and never shown at
+`/apply`. When nothing on `/apply` can take a response, the page renders
 `ApplyClosed.jsx` (the crab and the closed note). Each form also has a page of its own with nothing but that form
 on it, no menu and no footer: `/apply/interest/`, `/apply/coffee/`, and
 `/apply/application/` (the `applyInterest`, `applyCoffee`, and
 `applyApplication` entries in `src/seo.js`, marked `bare`, rendered from the
 apply chunk). A form the wiki adds later has no static document, so its
 address `/apply/<key>/` is sent by `404.html` to `/apply/?form=<key>`, which
-draws the same bare page. A closed form's page says so and links to `/apply/`.
+draws the same bare page. A closed form's address shows what `/apply` lists,
+or, with nothing listed, says the form is closed and links to `/apply/`.
 
 - Submissions post to `POST /api/recruit/site/<form>` as
   `{ answers, files, website, confirmUpdate }`, which answers 409

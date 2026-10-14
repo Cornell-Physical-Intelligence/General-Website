@@ -140,7 +140,7 @@ try {
   assert.ok(walk(downPage, (n) => n.props?.className === 'apply-page__retry'), 'and offers to try again');
   {
     let tries = 0;
-    const stalled = { cycle: { id: 'cy-1' }, landing: 'interest', sections: SAMPLE_SITE.sections.map((x) => ({ ...x, available: true })) };
+    const stalled = { cycle: { id: 'cy-1' }, landing: 'interest', apply: { question: 'What are you applying for?', choices: [{ key: 'interest', label: 'Interest form' }] }, sections: SAMPLE_SITE.sections.map((x) => ({ ...x, available: true })) };
     const draw = () => unwrap(Apply());
     globalThis.fetch = (url, init) => { tries += 1; return tries === 1 ? new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(new Error('aborted')))) : Promise.resolve({ ok: true, json: async () => stalled }); };
     resetMount(); cursor = 0; effects = [];
@@ -152,7 +152,7 @@ try {
   }
   {
     let tries = 0;
-    const flaky = { cycle: { id: 'cy-1' }, landing: 'interest', sections: SAMPLE_SITE.sections.map((x) => ({ ...x, available: true })) };
+    const flaky = { cycle: { id: 'cy-1' }, landing: 'interest', apply: { question: 'What are you applying for?', choices: [{ key: 'interest', label: 'Interest form' }] }, sections: SAMPLE_SITE.sections.map((x) => ({ ...x, available: true })) };
     const draw = () => unwrap(Apply());
     globalThis.fetch = async () => { tries += 1; if (tries < 3) throw new Error('dropped'); return { ok: true, json: async () => flaky }; };
     resetMount(); cursor = 0; effects = [];
@@ -162,11 +162,13 @@ try {
     assert.equal(walk(draw(), (n) => n.type?.name === 'SectionForm')?.props.section.key, 'interest', 'two dropped loads still end with the form');
     assert.equal(tries, 3);
   }
-  const open = (keys, landing = null) => ({ cycle: { id: 'cy-1', name: 'Fall 2026', term: 'Fall 2026', status: 'open' }, landing, sections: SAMPLE_SITE.sections.concat({ key: 'coffee', title: 'Coffee chats', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }).map((s) => ({ ...s, open: keys.includes(s.key), available: keys.includes(s.key) })) });
-  const twoOpen = await pageWith(open(['interest', 'coffee']));
-  assert.equal(walk(twoOpen, (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', 'with no choice, /apply shows the first open form');
-  assert.equal(walk(await pageWith(open(['interest', 'coffee'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'coffee', '/apply shows the form the wiki marks for it');
-  assert.equal(walk(await pageWith(open(['interest'], 'coffee')), (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', 'a closed choice falls back to the first open form');
+  // The feed as the wiki sends it: `listed` is what the team put on /apply, of which the open ones are offered.
+  const open = (keys, listed = []) => ({ cycle: { id: 'cy-1', name: 'Fall 2026', term: 'Fall 2026', status: 'open' }, landing: listed.find((k) => keys.includes(k)) || null, apply: { question: 'What are you applying for?', choices: listed.filter((k) => keys.includes(k)).map((key) => ({ key, label: key })) }, sections: SAMPLE_SITE.sections.concat({ key: 'coffee', title: 'Coffee chats', description: '', open: true, form: { questions: [{ key: 'name', type: 'short', label: 'Name', required: true }, { key: 'email', type: 'email', label: 'Email', required: true }] } }).map((s) => ({ ...s, open: keys.includes(s.key), available: keys.includes(s.key) })) });
+  const twoOpen = await pageWith(open(['interest', 'coffee'], ['interest']));
+  assert.equal(walk(twoOpen, (node) => node.type?.name === 'SectionForm').props.section.key, 'interest', '/apply shows the one form the wiki puts on it');
+  assert.equal(walk(await pageWith(open(['interest', 'coffee'], ['coffee'])), (node) => node.type?.name === 'SectionForm').props.section.key, 'coffee', 'whichever form that is');
+  assert.equal((await pageWith(open(['interest', 'coffee']))).type, 'closed', 'with nothing on /apply it shows the closed page, though forms are open at their own addresses');
+  assert.equal((await pageWith(open(['interest'], ['coffee']))).type, 'closed', 'a closed form on /apply leaves the page closed; no other form stands in');
   assert.equal((await pageWith(open([]))).type, 'closed', 'nothing open shows the closed page');
   // Several marked forms open at once: the visitor picks one first, by the wiki's labels.
   const marked = (keys, question = 'Which subteam?') => ({ ...open(keys), apply: { question, choices: [{ key: 'interest', label: 'Join the list' }, { key: 'coffee', label: 'Coffee' }] } });
@@ -236,8 +238,16 @@ try {
   globalThis.window.location.search = '';
   assert.equal((await import(pathToFileURL(join(dir, 'src/data/applyForms.js')))).formKeyFromSearch('?form=Bad Key'), '', 'only a plain key is honoured');
   const bareClosed = await pageWith(open(['interest']), drawCoffee);
-  assert.ok(!walk(bareClosed, (n) => n.type?.name === 'SectionForm'), 'a closed form draws no fields');
+  assert.ok(!walk(bareClosed, (n) => n.type?.name === 'SectionForm'), 'a closed form draws no fields, even with another open only at its own address');
   assert.ok(walk(bareClosed, (n) => Array.isArray(n.props?.children) && n.props.children.some((c) => typeof c === 'string' && c.includes('This form is closed'))), 'a closed form says so');
+  // The listed page mounts inside the form's page, so it loads on the next pass.
+  await pageWith(open(['interest'], ['interest']), drawCoffee);
+  effects.forEach((effect) => effect());
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  cursor = 0; effects = [];
+  const closedToListed = drawCoffee();
+  assert.equal(walk(closedToListed, (n) => n.type?.name === 'SectionForm')?.props.section.key, 'interest', 'a closed form\'s address shows what /apply lists');
+  assert.ok(walk(closedToListed, (n) => Array.isArray(n.props?.children) && n.props.children.some((c) => typeof c === 'string' && c.includes('These are open'))), 'under a note that says so');
 
   // The interest form, mounted alone the way the page mounts it.
   const site = SAMPLE_SITE;

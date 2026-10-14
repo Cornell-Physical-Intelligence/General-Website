@@ -782,6 +782,15 @@ const LOADING = <p className="apply-page__intro" role="status">Loading…</p>;
 
 const isOpen = (s) => s?.available === true && Array.isArray(s.form?.questions) && s.form.questions.length > 0;
 
+// The forms /apply lists: those the wiki puts on it, in its order, that can
+// take a response now. A form open only at its own address is never here.
+const listedOn = (site) => {
+  const open = (site?.sections || []).filter(isOpen);
+  return (Array.isArray(site?.apply?.choices) ? site.apply.choices : [])
+    .map((c) => ({ key: c?.key, label: c?.label, section: open.find((s) => s.key === c?.key) }))
+    .filter((c) => c.section);
+};
+
 const UNREACHABLE_NOTE = `We could not load the form right now. Try again in a moment, or email ${CONTACT_EMAIL}.`;
 
 // One form at its own address: a white page, no menu, no footer, just the
@@ -793,8 +802,8 @@ function FormPage({ formKey }) {
   const section = (site?.sections || []).find((s) => s?.key === formKey) || null;
   const open = isOpen(section);
   // An address for a form that is closed or that this cycle does not have
-  // (an old link, a printed QR code) shows what is open, when anything is.
-  if (site && !site.error && !open && (site.sections || []).some(isOpen)) {
+  // (an old link, a printed QR code) shows what /apply lists, when it lists anything.
+  if (site && !site.error && !open && listedOn(site).length) {
     return <ApplyLanding note={section ? (section.full ? 'This form is full.' : 'This form is closed right now.') : ''} />;
   }
   return (
@@ -826,11 +835,11 @@ export function ApplyApplication() { return <FormPage formKey="application" />; 
 
 
 
-// /apply is where the QR code and the menu land: the forms the wiki marks
-// for it. One open form is the page; several open at once are a choice the
-// visitor makes first, under the wiki's question and labels. With none
-// marked, the first open form. Every form also lives at its own address
-// (/apply/coffee/ and so on).
+// /apply is where the QR code and the menu land: the forms the wiki puts on
+// it. One open form is the page; several open at once are a choice the
+// visitor makes first, under the wiki's question and labels. With none, the
+// closed page. Every form also lives at its own address (/apply/coffee/ and
+// so on), including one the wiki keeps off /apply.
 export default function ApplyOpen() {
   const asked = typeof window === 'undefined' ? '' : formKeyFromSearch(window.location.search);
   if (asked) return <FormPage formKey={asked} />;
@@ -876,14 +885,11 @@ function ApplyLanding({ note = '' }) {
   const [picked, setPicked] = useState(readChoice);
   // While a form is sending, the choice stays where it is.
   const [busy, setBusy] = useState(false);
-  const open = (site?.sections || []).filter(isOpen);
-  const choices = (Array.isArray(site?.apply?.choices) ? site.apply.choices : [])
-    .map((c) => ({ key: c?.key, label: c?.label, section: open.find((s) => s.key === c?.key) }))
-    .filter((c) => c.section);
+  const choices = listedOn(site);
   const choosing = choices.length > 1;
   const active = choosing
     ? choices.find((c) => c.key === picked)?.section || null
-    : choices[0]?.section || open.find((s) => s.key === site?.landing) || open[0];
+    : choices[0]?.section || null;
   if (site && !active && !choosing && !site.error) return <ApplyClosed />;
 
   const cycleId = site?.cycle?.id;
