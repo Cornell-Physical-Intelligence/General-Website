@@ -5,6 +5,8 @@ export const BIO_PLACEHOLDER = '[coming soon]';
 // There is deliberately no per-person zoom here — one used to exist to patch the older,
 // inconsistent crops, and it silently re-zoomed the aligned ones back out of line.
 
+// Roster and class years checked against CampusGroups on October 16, 2026.
+// Undergraduate years reflect expected graduation in the 2026-27 academic year.
 export const TEAM_SECTIONS = [
   {
     // The team lead sits at the head of Leads rather than in a section of one.
@@ -12,6 +14,7 @@ export const TEAM_SECTIONS = [
     members: [
       {
         name: 'Andre Boufama',
+        year: 'Junior',
         imageBase: 'Andre',
         bio: "Hi I'm Andre. I like making websites and CAD and also eating",
         role: 'Team Lead',
@@ -27,6 +30,7 @@ export const TEAM_SECTIONS = [
       },
       {
         name: 'Jonathan Song',
+        year: 'Junior',
         imageBase: 'Jon',
         bio: "I'm really passionate about integrated electronics and anything robotics. In my free time I like to play ultimate frisbee and acoustic guitar",
         role: 'Electrical Co-Lead',
@@ -34,20 +38,15 @@ export const TEAM_SECTIONS = [
       },
       {
         name: 'Mic Robbins',
+        year: 'Junior',
         imageBase: 'Mic',
         bio: "I'm an electrical engineer and like to play clash royale (15k)",
         role: 'Electrical Co-Lead',
         project: 'Quad'
       },
       {
-        name: 'Alan Munschy',
-        imageBase: 'Alan',
-        bio: 'Hi, I like working on robot controls and I play chess',
-        role: 'Mechanical Co-Lead',
-        project: 'Hexapod'
-      },
-      {
         name: 'Ollie Aizer',
+        year: 'Sophomore',
         imageBase: 'Ollie',
         bio: 'Hi, my name is Ollie and I like drone design and cooking.',
         role: 'Mechanical Co-Lead',
@@ -55,6 +54,7 @@ export const TEAM_SECTIONS = [
       },
       {
         name: 'James Cenawood',
+        year: 'Junior',
         imageBase: 'James',
         bio: BIO_PLACEHOLDER,
         role: 'Computer Science Co-Lead',
@@ -65,7 +65,7 @@ export const TEAM_SECTIONS = [
         role: 'Computer Science Co-Lead',
         imageBase: 'NickLennon',
         bio: 'Hey, my name is Nick Lennon and I am interested in software, firmware, modeling, team coordination, and spicy food!',
-        year: 'Sophomore',
+        year: 'Junior',
         project: 'Quad'
       },
       {
@@ -73,7 +73,7 @@ export const TEAM_SECTIONS = [
         imageBase: 'Aidan',
         bio: BIO_PLACEHOLDER,
         role: 'Operations Co-Lead',
-        year: 'Sophomore',
+        year: 'Junior',
         project: 'Business'
       },
       {
@@ -86,9 +86,18 @@ export const TEAM_SECTIONS = [
       },
       {
         name: 'Youhanna Meleka',
+        year: 'Graduate',
         imageBase: 'Youhanna',
         bio: BIO_PLACEHOLDER,
         role: 'Technical Project Manager'
+      },
+      {
+        name: 'Nathan Cunningham',
+        imageBase: 'Nathan',
+        bio: "I'm interested in developing embedded systems. I enjoy running and eating",
+        role: 'Electrical Co-Lead',
+        year: 'Sophomore',
+        project: 'Hexapod'
       }
     ]
   },
@@ -96,93 +105,93 @@ export const TEAM_SECTIONS = [
     title: 'Members',
     members: [
       {
-        name: 'Nigel Tatem',
-        imageBase: 'Nigel',
-        bio: BIO_PLACEHOLDER,
-        year: 'Junior'
-      },
-      {
-        name: 'Nathan Cunningham',
-        imageBase: 'Nathan',
-        bio: "I'm interested in developing embedded systems. I enjoy running and eating",
-        year: 'Freshman',
-        project: 'Hexapod'
-      },
-      {
-        name: 'Ronan Alo',
-        imageBase: 'Ronan',
-        bio: 'I am majoring in mechanical engineering and computer science, interested in drone pathing',
-        year: 'Junior',
-        project: 'Quad'
-      },
-      {
         name: 'Amanuel Adane',
         imageBase: 'Amanuel',
         bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
+        year: 'Sophomore'
       },
       {
         name: 'Raymond Sheng',
         imageBase: 'Raymond',
         bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
+        year: 'Sophomore'
       },
       {
         name: 'Shaurya Sen',
         imageBase: 'Shaurya',
         bio: BIO_PLACEHOLDER,
-        year: 'Sophomore'
+        year: 'Junior'
       },
       {
         name: 'Jonathan Bael',
         imageBase: 'JonBael',
         bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
+        year: 'Sophomore'
       },
       {
         name: 'Ty Yue',
         imageBase: 'Ty',
         bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
+        year: 'Sophomore'
       },
       {
         name: 'Alicia He',
         imageBase: 'Alicia',
         bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
+        year: 'Sophomore'
       },
       {
         name: 'Mina Yeh',
         bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
+        year: 'Sophomore'
       },
       {
         name: 'Vincent Yi',
         imageBase: 'Vincent',
         bio: BIO_PLACEHOLDER,
-        year: 'Sophomore'
+        year: 'Junior'
       },
       {
         name: 'Calvin Pang',
         imageBase: 'Calvin',
         bio: BIO_PLACEHOLDER,
-        year: 'Sophomore'
+        year: 'Junior'
       },
       {
         name: 'Suphia Zhang',
         imageBase: 'Suphia',
         bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
+        year: 'Sophomore'
       },
       {
         name: 'Claire Shi',
         imageBase: 'Claire',
         bio: BIO_PLACEHOLDER,
-        year: 'Freshman'
+        year: 'Sophomore'
       },
       {
         name: 'Julian Gasharov',
         imageBase: 'Julian',
+        bio: BIO_PLACEHOLDER,
+        year: 'Senior'
+      },
+      {
+        name: 'Luke Evans',
+        bio: BIO_PLACEHOLDER,
+        year: 'Junior'
+      },
+      {
+        name: 'Carolyn Yu',
+        bio: BIO_PLACEHOLDER,
+        year: 'Sophomore'
+      },
+      {
+        name: 'Hendry Xu',
+        bio: BIO_PLACEHOLDER,
+        year: 'Freshman'
+      },
+      {
+        name: 'Kevin Yan',
         bio: BIO_PLACEHOLDER,
         year: 'Sophomore'
       }

@@ -4,7 +4,7 @@ export const SITE_URL = 'https://cornellphysicalintelligence.com';
 export const SITE_NAME = 'Cornell Physical Intelligence';
 export const SITE_ACRONYM = 'CUPI';
 export const SITE_RELEASE_DATE = '2026-08-16';
-export const HOME_LAST_MODIFIED = '2026-10-05';
+export const HOME_LAST_MODIFIED = '2026-10-16';
 export const SITE_ALTERNATE_NAMES = [
   SITE_ACRONYM,
   'Cornell University Physical Intelligence',
@@ -52,7 +52,7 @@ export const PAGE_SEO = {
     heading: 'Cornell Physical Intelligence Members',
     description:
       'Meet the Cornell students and faculty behind Cornell Physical Intelligence (CUPI) and its multidisciplinary robotics teams.',
-    lastModified: '2026-08-21',
+    lastModified: '2026-10-16',
   },
   sponsors: {
     path: '/sponsors/',

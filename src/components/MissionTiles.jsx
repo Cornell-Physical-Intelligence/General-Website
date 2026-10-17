@@ -3,7 +3,8 @@ import CountUp from './CountUp';
 import './MissionTiles.css';
 
 const stats = [
-  { label: 'Members', value: 35 },
+  // Student roster total: Leads + Members in src/data/team.js, excluding faculty.
+  { label: 'Members', value: 27 },
   { label: 'Subteams', value: 4 }
 ];
 
