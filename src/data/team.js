@@ -71,7 +71,7 @@ export const TEAM_SECTIONS = [
       {
         name: 'Aidan Moran',
         imageBase: 'Aidan',
-        bio: BIO_PLACEHOLDER,
+        bio: 'i like skiing reading and fortnite: battle royale',
         role: 'Operations Co-Lead',
         year: 'Junior',
         project: 'Business'
