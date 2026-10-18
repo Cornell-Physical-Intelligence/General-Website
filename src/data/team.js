@@ -160,7 +160,7 @@ export const TEAM_SECTIONS = [
       {
         name: 'Suphia Zhang',
         imageBase: 'Suphia',
-        bio: BIO_PLACEHOLDER,
+        bio: 'I spend my free time gaming and sketching in black and white, and I believe white rice goes with anything.',
         year: 'Sophomore'
       },
       {
@@ -177,7 +177,7 @@ export const TEAM_SECTIONS = [
       },
       {
         name: 'Luke Evans',
-        bio: BIO_PLACEHOLDER,
+        bio: 'Hi, I’m Luke. I enjoy reading philosophy and learning about propagating technology.',
         year: 'Junior'
       },
       {
@@ -187,7 +187,7 @@ export const TEAM_SECTIONS = [
       },
       {
         name: 'Hendry Xu',
-        bio: BIO_PLACEHOLDER,
+        bio: "Hi! I'm from New Jersey and I love Lord of the Rings and hiking.",
         year: 'Freshman'
       },
       {
