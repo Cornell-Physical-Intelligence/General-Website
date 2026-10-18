@@ -172,7 +172,7 @@ export const TEAM_SECTIONS = [
       {
         name: 'Julian Gasharov',
         imageBase: 'Julian',
-        bio: BIO_PLACEHOLDER,
+        bio: "I'm from Ithaca New York and a few years ago i was world champion on a mobile rts called command and conquer rivals",
         year: 'Senior'
       },
       {
