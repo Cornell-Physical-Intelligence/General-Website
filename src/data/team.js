@@ -125,7 +125,7 @@ export const TEAM_SECTIONS = [
       {
         name: 'Jonathan Bael',
         imageBase: 'JonBael',
-        bio: BIO_PLACEHOLDER,
+        bio: "I'm from ithaca, and I like to solve problems, eat, and sleep. Also r6 on top(2k hrs)",
         year: 'Sophomore'
       },
       {
@@ -148,7 +148,7 @@ export const TEAM_SECTIONS = [
       {
         name: 'Vincent Yi',
         imageBase: 'Vincent',
-        bio: BIO_PLACEHOLDER,
+        bio: 'I think computers and electric things are cool',
         year: 'Junior'
       },
       {
@@ -192,7 +192,7 @@ export const TEAM_SECTIONS = [
       },
       {
         name: 'Kevin Yan',
-        bio: BIO_PLACEHOLDER,
+        bio: 'I like making charcuterie boards and playing deck building rouge likes',
         year: 'Sophomore'
       }
     ]
