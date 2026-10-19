@@ -56,7 +56,7 @@ export const TEAM_SECTIONS = [
         name: 'James Cenawood',
         year: 'Junior',
         imageBase: 'James',
-        bio: BIO_PLACEHOLDER,
+        bio: "I'm from west egg and I think machine learning and game theory are interesting. I made a game solver about dropping a napkin.",
         role: 'Computer Science Co-Lead',
         project: 'Quad'
       },

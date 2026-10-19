@@ -52,7 +52,7 @@ export const PAGE_SEO = {
     heading: 'Cornell Physical Intelligence Members',
     description:
       'Meet the Cornell students and faculty behind Cornell Physical Intelligence (CUPI) and its multidisciplinary robotics teams.',
-    lastModified: '2026-10-18',
+    lastModified: '2026-10-19',
   },
   sponsors: {
     path: '/sponsors/',
