@@ -88,7 +88,7 @@ export const TEAM_SECTIONS = [
         name: 'Youhanna Meleka',
         year: 'Graduate',
         imageBase: 'Youhanna',
-        bio: 'Love building robots with scale in mind. Have a keen interest in ai supply chains. Values longterm relationships.',
+        bio: 'Love building robots with scale in mind. Have a keen interest in ai supply chains. Values longterm relationships and mentorship.',
         role: 'Technical Project Manager'
       },
       {
