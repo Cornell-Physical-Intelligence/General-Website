@@ -131,7 +131,7 @@ export const TEAM_SECTIONS = [
       {
         name: 'Ty Yue',
         imageBase: 'Ty',
-        bio: BIO_PLACEHOLDER,
+        bio: "I'm from LA and I like mechatronics, playing card games, and watching Star Wars",
         year: 'Sophomore'
       },
       {
