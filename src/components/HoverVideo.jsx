@@ -15,8 +15,10 @@ import './HoverVideo.css';
  * of them ran to 2.4MB on a page whose text is a few kilobytes. They are AVIF now, at the
  * sizes the tile can actually occupy.
  *
- * The still stays layered on top until the video's `playing` event fires, so the handover
- * is a cross-fade rather than a flash of empty <video>. Poster and clip are encoded at the
+ * The still stays layered on top until the video has a frame on screen, so the handover
+ * is a cross-fade rather than a flash of empty <video>. `playing` alone is not that
+ * signal: it says playback started, not that anything was drawn, and fading on it left
+ * Safari showing an empty tile. Poster and clip are encoded at the
  * same dimensions, so they land on exactly the same pixels — nothing shifts when the two
  * trade places.
  *
@@ -49,6 +51,7 @@ export default function HoverVideo({
   const tileRef = useRef(null);
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(false);
+  const frameRef = useRef(0);
 
   // An `autoplay` clip runs on its own, muted and looping, whenever at least a quarter
   // of it is on screen, and pauses when it scrolls away, so it costs nothing until it
@@ -76,9 +79,25 @@ export default function HoverVideo({
     videoRef.current?.play().catch(() => {}); // a fast leave aborts the promise; harmless
   };
 
+  // Hand over from the still on the first frame the video actually presents. Browsers
+  // without requestVideoFrameCallback fall back to `playing`.
+  const revealWhenPainted = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (!v.requestVideoFrameCallback) {
+      setPlaying(true);
+      return;
+    }
+    v.cancelVideoFrameCallback(frameRef.current);
+    frameRef.current = v.requestVideoFrameCallback(() => {
+      if (!v.paused) setPlaying(true);
+    });
+  };
+
   const stopPlaying = () => {
     const v = videoRef.current;
     if (!v) return;
+    v.cancelVideoFrameCallback?.(frameRef.current);
     v.pause();
     v.currentTime = 0;
     setPlaying(false);
@@ -124,7 +143,8 @@ export default function HoverVideo({
         playsInline
         tabIndex={-1}
         aria-hidden="true"
-        onPlaying={() => setPlaying(true)}
+        onPlaying={revealWhenPainted}
+        onEmptied={() => setPlaying(false)}
       />
       <button
         type="button"
