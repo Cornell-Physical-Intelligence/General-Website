@@ -1,0 +1,95 @@
+/* --banner-offset is how far the strip pushes the menu bar down. Page padding and scroll
+   margins add the same amount, so what sits under the bar keeps its clearance. */
+.app--banner {
+  --banner-height: 32px;
+  --banner-offset: 12px;
+}
+
+.app--banner .menu-bar {
+  top: calc(32px + var(--banner-offset));
+}
+
+/* Fixed rather than in flow: the hero is exactly one screen tall, and a strip in the
+   flow would push the next section into view by its own height. */
+.crowdfunding-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: var(--banner-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 12px;
+  /* Cornell carnelian, in either theme: the one color on the page, so it reads as news. */
+  background: #b31b1b;
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.crowdfunding-banner:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -4px;
+}
+
+.crowdfunding-banner__cta {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.crowdfunding-banner__arrow {
+  margin-left: -8px;
+  transition: transform 0.2s ease;
+}
+
+@media (hover: hover) {
+  .crowdfunding-banner:hover .crowdfunding-banner__arrow {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crowdfunding-banner__arrow {
+    transition: none;
+  }
+}
+
+/* Matches the menu bar's treatment while a lightbox owns the screen. */
+body.lightbox-open .crowdfunding-banner {
+  pointer-events: none;
+  filter: blur(12px);
+  opacity: 0.5;
+}
+
+@media (max-width: 520px) {
+  .app--banner {
+    --banner-height: 30px;
+    --banner-offset: 24px;
+  }
+
+  .app--banner .menu-bar {
+    top: calc(16px + var(--banner-offset));
+  }
+
+  .crowdfunding-banner {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+
+  /* The whole strip is the link, so the arrow carries the action on a phone. */
+  .crowdfunding-banner__cta {
+    display: none;
+  }
+
+  .crowdfunding-banner__arrow {
+    margin-left: -6px;
+  }
+}

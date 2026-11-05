@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { formKeyFromSearch } from './data/applyForms';
+import { crowdfundingOpen } from './data/crowdfunding';
+import CrowdfundingBanner from './components/CrowdfundingBanner';
 import { P, applyParam } from './components/voronoiConfig';
 import { getPageFromPath, writePath } from './routes';
 import { applyPageSeo, getPageSeo } from './seo';
@@ -225,8 +227,10 @@ export default function App({ initialPage, InitialPage }) {
   // A bare page (one form at its own address, or /apply/?form=<key> for a
   // form added after this build) is the form and nothing else.
   const bare = Boolean(getPageSeo(currentPage).bare) || (currentPage === 'apply' && Boolean(formKeyFromSearch(window.location.search)));
+  const showBanner = crowdfundingOpen && !bare;
   return (
-    <div className={`app ${inverted ? 'app--light' : 'app--dark'}`}>
+    <div className={`app ${inverted ? 'app--light' : 'app--dark'}${showBanner ? ' app--banner' : ''}`}>
+      {showBanner && <CrowdfundingBanner />}
       {!bare && <nav className="menu-bar">
         <div className="menu-glass">
           <div className="menu-content">

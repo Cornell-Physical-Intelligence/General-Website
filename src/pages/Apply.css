@@ -579,7 +579,7 @@
   .ifz-input,
   .ifz-projectbox__text,
   .ifz-dd__button {
-    scroll-margin-top: 80px;
+    scroll-margin-top: calc(80px + var(--banner-offset, 0px));
   }
 }
 
