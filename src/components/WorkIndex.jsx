@@ -9,7 +9,7 @@ import './WorkIndex.css';
 // Every card shares one 4:3 frame so the row reads as a set, which is why each project
 // names the clip that survives that crop best.
 const CARD_CLIP = {
-  hexapod: '/media/hexapod-tripod-960.mp4',
+  hexapod: '/media/hexapod-walks-960.mp4',
   manipulation: '/media/arm-ball-960.mp4',
   'drone-racing': '/media/drone-sim-960.mp4',
 };

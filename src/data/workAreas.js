@@ -8,9 +8,9 @@ export const WORK_AREAS = [
     ratio: '16 / 9',
     clips: [
       {
-        src: '/media/hexapod-tripod-960.mp4',
-        poster: 'hexapod-tripod',
-        label: 'Play: the prescribed tripod gait walking forward in Isaac Sim',
+        src: '/media/hexapod-walks-960.mp4',
+        poster: 'hexapod-walks',
+        label: 'Play: the prescribed tripod gait walking forward in Isaac Sim, then twenty optimized motions side by side',
       },
       {
         src: '/media/hexapod-stairs-960.mp4',
@@ -22,7 +22,7 @@ export const WORK_AREAS = [
         poster: 'hexapod-leg-jump',
         // The odd clip out runs the full width of the pair above it.
         sizes: '(max-width: 960px) 100vw, 960px',
-        label: 'Play: a real leg jumping on its test rail, at real speed on the left and at quarter speed on the right with its hip, knee and foot tracked',
+        label: 'Play: a real leg jumping on its test rail, then replayed at quarter speed with its hip, knee and foot tracked and their height plotted',
       },
     ],
     summary: `The hexapod project continues from last semester, in collaboration with
