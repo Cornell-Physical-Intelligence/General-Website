@@ -877,6 +877,242 @@
       ]
     }
   },
+  "report:cupi-sponsorship-packet": {
+    "p01": {
+      "avif": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p01-860.avif",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p01-1122.avif",
+          "w": 1122,
+          "h": 1452
+        }
+      ],
+      "webp": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p01-860.webp",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p01-1122.webp",
+          "w": 1122,
+          "h": 1452
+        }
+      ]
+    },
+    "p02": {
+      "avif": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p02-860.avif",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p02-1122.avif",
+          "w": 1122,
+          "h": 1452
+        }
+      ],
+      "webp": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p02-860.webp",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p02-1122.webp",
+          "w": 1122,
+          "h": 1452
+        }
+      ]
+    },
+    "p03": {
+      "avif": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p03-860.avif",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p03-1122.avif",
+          "w": 1122,
+          "h": 1452
+        }
+      ],
+      "webp": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p03-860.webp",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p03-1122.webp",
+          "w": 1122,
+          "h": 1452
+        }
+      ]
+    },
+    "p04": {
+      "avif": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p04-860.avif",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p04-1122.avif",
+          "w": 1122,
+          "h": 1452
+        }
+      ],
+      "webp": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p04-860.webp",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p04-1122.webp",
+          "w": 1122,
+          "h": 1452
+        }
+      ]
+    },
+    "p05": {
+      "avif": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p05-860.avif",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p05-1122.avif",
+          "w": 1122,
+          "h": 1452
+        }
+      ],
+      "webp": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p05-860.webp",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p05-1122.webp",
+          "w": 1122,
+          "h": 1452
+        }
+      ]
+    },
+    "p06": {
+      "avif": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p06-860.avif",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p06-1122.avif",
+          "w": 1122,
+          "h": 1452
+        }
+      ],
+      "webp": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p06-860.webp",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p06-1122.webp",
+          "w": 1122,
+          "h": 1452
+        }
+      ]
+    },
+    "p07": {
+      "avif": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p07-860.avif",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p07-1122.avif",
+          "w": 1122,
+          "h": 1452
+        }
+      ],
+      "webp": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p07-860.webp",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p07-1122.webp",
+          "w": 1122,
+          "h": 1452
+        }
+      ]
+    },
+    "p08": {
+      "avif": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p08-860.avif",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p08-1122.avif",
+          "w": 1122,
+          "h": 1452
+        }
+      ],
+      "webp": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p08-860.webp",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p08-1122.webp",
+          "w": 1122,
+          "h": 1452
+        }
+      ]
+    },
+    "p09": {
+      "avif": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p09-860.avif",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p09-1122.avif",
+          "w": 1122,
+          "h": 1452
+        }
+      ],
+      "webp": [
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p09-860.webp",
+          "w": 860,
+          "h": 1113
+        },
+        {
+          "src": "/img/Reports/cupi-sponsorship-packet/p09-1122.webp",
+          "w": 1122,
+          "h": 1452
+        }
+      ]
+    }
+  },
   "report:racing-without-a-map": {
     "p01": {
       "avif": [

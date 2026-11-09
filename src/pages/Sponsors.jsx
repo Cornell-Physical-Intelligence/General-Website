@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import SiteFooter from '../components/SiteFooter';
 import SponsorMark from '../components/SponsorMark';
 import ResponsiveImage from '../components/ResponsiveImage';
+import PageViewer from '../components/PageViewer';
 import { SPONSOR_ART_PICTURES } from '../data/sponsorArt';
+import { PACKET } from '../data/packet';
+import { getReportPdf } from '../data/reports';
 import { assetPath } from '../utils/assetPath';
 import './Sponsors.css';
 
@@ -50,11 +53,11 @@ const SPONSORS = [
 // on a 1x screen.
 const LOGO_SIZES = '(max-width: 640px) 40vw, 220px';
 
-const PACKET = 'docs/cupi-sponsorship-packet.pdf';
 const CONTACT = 'ab3233@cornell.edu';
 
 export default function Sponsors() {
   const [copied, setCopied] = useState(false);
+  const [packetOpen, setPacketOpen] = useState(false);
   const resetRef = useRef(null);
 
   useEffect(() => () => window.clearTimeout(resetRef.current), []);
@@ -113,7 +116,20 @@ export default function Sponsors() {
           CUPI builds the future of human robot interaction at Cornell. Robots and compute
           are super expensive, so we are extremely grateful for our awesome sponsors! To
           become one, read the{' '}
-          <a href={assetPath(PACKET)} target="_blank" rel="noreferrer">
+          {/* A plain click reads it here; a modified or middle click still gets the
+              file in a new tab, which is what the href is for. */}
+          <a
+            href={getReportPdf(PACKET.slug)}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(event) => {
+              if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+              }
+              event.preventDefault();
+              setPacketOpen(true);
+            }}
+          >
             sponsorship packet
           </a>{' '}
           and write to{' '}
@@ -181,6 +197,8 @@ export default function Sponsors() {
       </div>
 
       <SiteFooter />
+
+      <PageViewer doc={packetOpen ? PACKET : null} onClose={() => setPacketOpen(false)} />
     </main>
   );
 }

@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 import { APPLY_ART_PICTURES } from './src/data/applyArt.js'
 import { GALLERY_IMAGES, galleryPictureFor } from './src/data/gallery.js'
 import { SPONSOR_ART_PICTURES } from './src/data/sponsorArt.js'
+import { PACKET } from './src/data/packet.js'
 import { PROFESSORS, TEAM_SECTIONS } from './src/data/team.js'
 import {
   ORGANIZATION_LINKS,
@@ -49,9 +50,13 @@ const IMAGE_MANIFEST_GROUPS = {
   work: ['poster'],
 }
 const DIRECT_RUNTIME_IMAGE_GROUPS = ['galleryThumb', 'galleryFull', 'art']
-const DIRECT_REPORTS = Object.values(PAGE_SEO)
-  .filter((seo) => seo.report)
-  .map((seo) => seo.report)
+const DIRECT_REPORTS = [
+  ...Object.values(PAGE_SEO)
+    .filter((seo) => seo.report)
+    .map((seo) => seo.report),
+  // Not a report page, but read in the same viewer from the same render pattern.
+  PACKET,
+]
 const DIRECT_IMAGE_MANIFEST_GROUPS = DIRECT_REPORTS.map(
   ({ slug }) => `report:${slug}`,
 )

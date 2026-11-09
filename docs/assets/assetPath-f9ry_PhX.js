@@ -1,1 +1,0 @@
-var e=(e=>e?e.endsWith(`/`)?e:`${e}/`:`/`)(`/`),t=(t=``)=>t?`${e}${t.replace(/^\/+/,``)}`:e;export{t};
