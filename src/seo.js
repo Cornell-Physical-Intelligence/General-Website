@@ -43,7 +43,7 @@ export const PAGE_SEO = {
     heading: 'Robotics Projects and Technical Reports',
     description:
       'Explore Cornell Physical Intelligence (CUPI) robotics projects in hexapod locomotion, manipulation, autonomous perception, navigation, and the Anduril AI Grand Prix.',
-    lastModified: '2026-10-05',
+    lastModified: '2026-11-09',
   },
   members: {
     path: '/members/',

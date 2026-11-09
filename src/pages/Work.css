@@ -48,6 +48,11 @@
   overflow: hidden;
 }
 
+/* A third clip has no partner, so it takes the whole row under the pair. */
+.work-area__clips > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 /* ------------------------------------------------------------------ summary */
 .work-area__summary {
   margin: clamp(14px, 2.2vw, 22px) 0 0;
