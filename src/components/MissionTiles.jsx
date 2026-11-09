@@ -4,7 +4,7 @@ import './MissionTiles.css';
 
 const stats = [
   // Student roster total: Leads + Members in src/data/team.js, excluding faculty.
-  { label: 'Members', value: 27 },
+  { label: 'Members', value: 28 },
   { label: 'Subteams', value: 4 }
 ];
 

@@ -98,6 +98,12 @@ export const TEAM_SECTIONS = [
         role: 'Electrical Co-Lead',
         year: 'Sophomore',
         project: 'Hexapod'
+      },
+      {
+        name: 'Orion Hoch',
+        bio: BIO_PLACEHOLDER,
+        role: 'Hexapod Co-Lead',
+        project: 'Hexapod'
       }
     ]
   },
