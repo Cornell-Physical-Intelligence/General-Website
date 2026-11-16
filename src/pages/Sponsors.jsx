@@ -26,11 +26,6 @@ const TIERS = [
 // `art` names an entry in the generated image manifest; `logo` is a supplied asset path
 // used as-is when the source artwork should not be generated or re-encoded.
 const SPONSORS = [
-  {
-    name: 'CU GeoData',
-    tier: 'gold',
-    logo: 'icons/CUGeoData_Wordmark.png',
-  },
   // Current Picogrid wordmark only; the older hexagon is retired.
   { name: 'Picogrid', tier: 'gold', logo: 'icons/Picogrid_Wordmark.svg', wide: true },
   { name: 'Modovolo', tier: 'silver', art: 'Modovolo_Logo', emblem: true },
