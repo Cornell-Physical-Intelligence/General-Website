@@ -40,6 +40,12 @@
   outline-offset: -4px;
 }
 
+/* The goal sits a step behind the headline: same type, quieter. 0.8 is as far as it can
+   fade and still clear 4.5:1 on the carnelian. */
+.crowdfunding-banner__goal {
+  opacity: 0.8;
+}
+
 .crowdfunding-banner__cta {
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -91,5 +97,13 @@ body.lightbox-open .crowdfunding-banner {
 
   .crowdfunding-banner__arrow {
     margin-left: -6px;
+  }
+}
+
+/* Narrower than this, one line cannot hold both the headline and the goal, and the
+   headline is the one that has to stay. */
+@media (max-width: 350px) {
+  .crowdfunding-banner__goal {
+    display: none;
   }
 }
