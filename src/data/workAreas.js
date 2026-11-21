@@ -10,7 +10,7 @@ export const WORK_AREAS = [
       {
         src: '/media/hexapod-walks-960.mp4',
         poster: 'hexapod-walks',
-        label: 'Play: the prescribed tripod gait walking forward in Isaac Sim, then twenty optimized motions side by side',
+        label: 'Play: the hexapod walking through a Gaussian splat of a forest floor in Isaac Sim, beside its own camera view, the lidar map it builds, its foot contacts and the tilt its IMU reads',
       },
       {
         src: '/media/hexapod-stairs-960.mp4',

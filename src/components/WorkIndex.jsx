@@ -7,9 +7,15 @@ import './WorkIndex.css';
 // section, and one line on what it is. The detail lives on Work; this is the index.
 //
 // Every card shares one 4:3 frame so the row reads as a set, which is why each project
-// names the clip that survives that crop best.
+// names the clip that survives that crop best. The hexapod's Work clip is a four-panel
+// sim readout that no 4:3 crop survives, so its card gets a cut of its own: the chase
+// camera panel alone, encoded 4:3.
 const CARD_CLIP = {
-  hexapod: '/media/hexapod-walks-960.mp4',
+  hexapod: {
+    src: '/media/hexapod-splat-chase-960.mp4',
+    poster: 'hexapod-splat-chase',
+    label: 'Play: the hexapod walking across a Gaussian splat of a forest floor in Isaac Sim',
+  },
   manipulation: '/media/arm-ball-960.mp4',
   'drone-racing': '/media/drone-sim-960.mp4',
 };
@@ -25,7 +31,9 @@ export default function WorkIndex({ onNavigate }) {
       </h2>
       <ul className="work-index__list">
         {WORK_AREAS.map((area) => {
-          const clip = area.clips.find((c) => c.src === CARD_CLIP[area.id]) ?? area.clips[0];
+          const pick = CARD_CLIP[area.id];
+          const clip =
+            typeof pick === 'object' ? pick : (area.clips.find((c) => c.src === pick) ?? area.clips[0]);
           return (
             <li className="work-index__item" key={area.id}>
               <div className="work-index__media">

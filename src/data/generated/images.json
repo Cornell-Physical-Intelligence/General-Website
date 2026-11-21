@@ -876,6 +876,32 @@
         }
       ]
     },
+    "hexapod-splat-chase": {
+      "avif": [
+        {
+          "src": "/media/hexapod-splat-chase-640.avif",
+          "w": 640,
+          "h": 480
+        },
+        {
+          "src": "/media/hexapod-splat-chase-672.avif",
+          "w": 672,
+          "h": 504
+        }
+      ],
+      "webp": [
+        {
+          "src": "/media/hexapod-splat-chase-640.webp",
+          "w": 640,
+          "h": 480
+        },
+        {
+          "src": "/media/hexapod-splat-chase-672.webp",
+          "w": 672,
+          "h": 504
+        }
+      ]
+    },
     "hexapod-stairs": {
       "avif": [
         {
